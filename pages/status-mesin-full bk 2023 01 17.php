@@ -1,0 +1,1715 @@
+<?php
+include"../koneksi.php";
+ini_set("error_reporting",1);
+
+$news=mysqli_query($con,"SELECT * FROM tbl_news_line WHERE gedung='LT 1' LIMIT 1");
+$rNews=mysqli_fetch_array($news);
+?>
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+		<meta http-equiv="refresh" content="900">
+		<title>Status Mesin</title>
+<!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="../plugins/fontawesome-free/css/all.min.css">
+  <!-- DataTables -->
+  <link rel="stylesheet" href="../plugins/datatables-bs4/css/dataTables.bootstrap4.min.css">
+  <link rel="stylesheet" href="../plugins/datatables-responsive/css/responsive.bootstrap4.min.css">
+  <link rel="stylesheet" href="../plugins/datatables-buttons/css/buttons.bootstrap4.min.css">	
+  <!-- Tempusdominus Bbootstrap 4 -->
+  <link rel="stylesheet" href="../plugins/tempusdominus-bootstrap-4/css/tempusdominus-bootstrap-4.min.css">	
+  <!-- SweetAlert2 -->
+  <link rel="stylesheet" href="../plugins/sweetalert2-theme-bootstrap-4/bootstrap-4.min.css">
+  <!-- Toastr -->
+  <link rel="stylesheet" href="../plugins/toastr/toastr.min.css">		
+		<style>
+			td{
+		padding: 1px 0px;
+	}
+			p {
+   				line-height: 6px;
+				font-size: 12px;
+			}
+</style>
+		<style>
+			.blink_me {
+  animation: blinker 1s linear infinite;
+}
+@keyframes blinker {
+  50% { opacity: 0; }
+}
+	body{
+		font-family: Calibri, "sans-serif", "Courier New";  /* "Calibri Light","serif" */
+		font-style: normal;
+	}
+</style>
+
+		<link rel="stylesheet" href="../dist/css/adminlte.min.css">
+  <link rel="icon" type="image/png" href="../dist/img/ITTI_Logo index.ico">
+		<style type="text/css">
+			.teks-berjalan {
+				background-color: #03165E;
+				color: #F4F0F0;
+				font-family: monospace;
+				font-size: 24px;
+				font-style: italic;
+			}
+
+			.border-dashed {
+				border: 4px dashed #083255;
+			}
+
+			.bulat {
+				border-radius: 50%;
+				/*box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);*/
+			}
+
+		</style>
+	</head>
+
+	<body>
+
+
+					<?php
+function NoMesin($mc)
+{
+include"../koneksi.php";	
+$sqlDB2 =" 
+SELECT *
+FROM (
+SELECT 
+CASE  
+WHEN (IDS = '2 ,0' OR IDS = '0 ,2' OR IDS = '2 ,2' OR IDS = '2 ,3' OR IDS = '2 ,0 ,0' OR IDS = '2 ,2 ,3' 
+OR IDS = '2 ,2 ,0' OR IDS = '0 ,0 ,2' OR IDS = '0 ,2 ,0 ,0' OR IDS = '2 ,2 ,0 ,0' OR IDS = '2 ,2 ,0 ,2' OR IDS = '3 ,2 ,0 ,2' 
+OR IDS = '2 ,3 ,0 ,3' OR IDS = '2 ,2 ,3 ,0 ,2' ) AND STSMC.STEPNUMBER IS NULL THEN 1
+WHEN STSMC.STEPNUMBER >= 2 AND STSMC.STEPNUMBER <= 7  THEN 2
+WHEN STSMC.STEPNUMBER = 1 THEN 4
+ELSE 3
+END AS URUT,
+STSMC1.IDS,
+PRODUCTIONDEMAND.CODE,PRODUCTIONDEMAND.PROGRESSSTATUS,SCHEDULESOFSTEPSPLITS.SCHEDULEDRESOURCECODE,
+STSMC.STEPNUMBER,STSMC.LONGDESCRIPTION,STSMC.PLANNEDOPERATIONCODE,
+CASE  
+WHEN AD3.VALUESTRING = 0 OR AD3.VALUESTRING IS NULL  THEN 'Normal'
+WHEN AD3.VALUESTRING = 1  THEN 'Urgent'
+END AS STSDEMAND 
+FROM DB2ADMIN.PRODUCTIONDEMAND 
+LEFT OUTER JOIN DB2ADMIN.SCHEDULESOFSTEPSPLITS SCHEDULESOFSTEPSPLITS ON PRODUCTIONDEMAND.CODE = SCHEDULESOFSTEPSPLITS.CODE
+LEFT OUTER JOIN DB2ADMIN.ADSTORAGE ON ADSTORAGE.UNIQUEID = PRODUCTIONDEMAND.ABSUNIQUEID AND ADSTORAGE.NAMENAME ='MachineNo'
+LEFT OUTER JOIN DB2ADMIN.ADSTORAGE AD1 ON AD1.UNIQUEID = PRODUCTIONDEMAND.ABSUNIQUEID AND AD1.NAMENAME ='TglRencana'
+LEFT OUTER JOIN DB2ADMIN.ADSTORAGE AD2 ON AD2.UNIQUEID = PRODUCTIONDEMAND.ABSUNIQUEID AND AD2.NAMENAME ='RMPReqDate' 
+LEFT OUTER JOIN DB2ADMIN.ADSTORAGE AD3 ON AD3.UNIQUEID = PRODUCTIONDEMAND.ABSUNIQUEID AND AD3.NAMENAME ='StatusDemand'
+LEFT OUTER JOIN (
+
+SELECT STEPNUMBER,PLANNEDOPERATIONCODE,PROGRESSSTATUS,LONGDESCRIPTION,PRODUCTIONDEMANDCODE  FROM PRODUCTIONDEMANDSTEP 
+WHERE PROGRESSSTATUS ='2' AND 
+NOT (PLANNEDOPERATIONCODE='KNT1' OR PLANNEDOPERATIONCODE='INS1')
+ORDER BY STEPNUMBER DESC
+
+) STSMC ON STSMC.PRODUCTIONDEMANDCODE=PRODUCTIONDEMAND.CODE
+LEFT OUTER JOIN (
+
+SELECT 
+trim(LISTAGG (PROGRESSSTATUS , ',') WITHIN GROUP(ORDER BY PRODUCTIONDEMANDCODE ASC)) as IDS	,
+PRODUCTIONDEMANDCODE
+FROM PRODUCTIONDEMANDSTEP 
+WHERE (OPERATIONCODE='INS1' OR OPERATIONCODE='KNT1')
+GROUP BY PRODUCTIONDEMANDCODE
+
+) STSMC1 ON STSMC1.PRODUCTIONDEMANDCODE=PRODUCTIONDEMAND.CODE
+
+WHERE PRODUCTIONDEMAND.ITEMTYPEAFICODE  ='KGF' AND 
+(ADSTORAGE.VALUESTRING='$mc' OR SCHEDULESOFSTEPSPLITS.SCHEDULEDRESOURCECODE='$mc' ) AND 
+(PRODUCTIONDEMAND.PROGRESSSTATUS='2' OR PRODUCTIONDEMAND.PROGRESSSTATUS='3')
+ORDER BY STSMC.STEPNUMBER DESC ) STSLAYAR
+ORDER BY STSLAYAR.URUT ASC
+ ";
+$stmt   = db2_exec($conn1,$sqlDB2, array('cursor'=>DB2_SCROLLABLE));
+$rowdb2 = db2_fetch_assoc($stmt);
+
+$sqlDB25 =" SELECT COUNT(WEIGHTREALNET ) AS JML,INSPECTIONENDDATETIME FROM 
+ELEMENTSINSPECTION WHERE DEMANDCODE ='$rowdb2[CODE]' AND ELEMENTITEMTYPECODE='KGF' AND QUALITYREASONCODE='PM'
+GROUP BY INSPECTIONENDDATETIME ";	
+$stmt5   = db2_exec($conn1,$sqlDB25, array('cursor'=>DB2_SCROLLABLE));
+$rowdb25 = db2_fetch_assoc($stmt5);	
+	
+if(($rowdb2['PROGRESSSTATUS']=="2" or $rowdb2['PROGRESSSTATUS']=="3") and $rowdb25['JML']>"0" ){
+			$warnaD01="btn-danger";
+		}elseif(($rowdb2['PROGRESSSTATUS']=="2" or $rowdb2['PROGRESSSTATUS']=="3") and trim($rowdb2['PLANNEDOPERATIONCODE'])=="HOLD" ){
+			if($rowdb2['STSDEMAND']=="Normal"){	$warnaD01="bg-black"; }else{ $warnaD01="bg-black blink_me"; }
+		}elseif(($rowdb2['PROGRESSSTATUS']=="2" or $rowdb2['PROGRESSSTATUS']=="3") and trim($rowdb2['PLANNEDOPERATIONCODE'])=="PBS" ){
+			if($rowdb2['STSDEMAND']=="Normal"){	$warnaD01="bg-pink"; }else{ $warnaD01="bg-pink blink_me"; }
+		}elseif(($rowdb2['PROGRESSSTATUS']=="2" or $rowdb2['PROGRESSSTATUS']=="3") and trim($rowdb2['PLANNEDOPERATIONCODE'])=="PBG" ){
+			if($rowdb2['STSDEMAND']=="Normal"){	$warnaD01="bg-orange"; }else{ $warnaD01="bg-orange blink_me"; }
+		}elseif(($rowdb2['PROGRESSSTATUS']=="2" or $rowdb2['PROGRESSSTATUS']=="3") and trim($rowdb2['PLANNEDOPERATIONCODE'])=="AMC" ){
+			if($rowdb2['STSDEMAND']=="Normal"){	$warnaD01="bg-yellow"; }else{ $warnaD01="bg-yellow blink_me"; }
+		}elseif(($rowdb2['PROGRESSSTATUS']=="2" or $rowdb2['PROGRESSSTATUS']=="3") and trim($rowdb2['PLANNEDOPERATIONCODE'])=="TPB" ){
+			if($rowdb2['STSDEMAND']=="Normal"){	$warnaD01="bg-purple"; }else{ $warnaD01="bg-purple blink_me"; }
+		}elseif(($rowdb2['PROGRESSSTATUS']=="2" or $rowdb2['PROGRESSSTATUS']=="3") and trim($rowdb2['PLANNEDOPERATIONCODE'])=="TST" ){
+			if($rowdb2['STSDEMAND']=="Normal"){	$warnaD01="bg-blue"; }else{ $warnaD01="bg-blue blink_me"; }
+		}elseif(($rowdb2['PROGRESSSTATUS']=="2" or $rowdb2['PROGRESSSTATUS']=="3") and trim($rowdb2['PLANNEDOPERATIONCODE'])=="TTQ" ){
+			if($rowdb2['STSDEMAND']=="Normal"){	$warnaD01="bg-gray"; }else{ $warnaD01="bg-gray blink_me"; }
+		}else if(($rowdb2['PROGRESSSTATUS']=="2" or $rowdb2['PROGRESSSTATUS']=="3") 
+		and ($rowdb2['IDS']=="2 ,0" or $rowdb2['IDS']=="0 ,2" or $rowdb2['IDS']=="2 ,2" or $rowdb2['IDS']=="2 ,3" or 
+			$rowdb2['IDS']=="2 ,2 ,3" or $rowdb2['IDS']=="2 ,0 ,0" or $rowdb2['IDS']=="2 ,2 ,0" or $rowdb2['IDS']=="0 ,0 ,2" or
+			$rowdb2['IDS']=="0 ,2 ,0 ,0" or $rowdb2['IDS']=="2 ,2 ,0 ,2" or $rowdb2['IDS']=="2 ,2 ,0 ,0" or $rowdb2['IDS']=="3 ,2 ,0 ,2" or $rowdb2['IDS']=="2 ,3 ,0 ,3" or $rowdb2['IDS']=="2 ,2 ,3 ,0 ,2") ) {
+			if($rowdb2['STSDEMAND']=="Normal"){	$warnaD01="bg-green"; }else{ $warnaD01="bg-green blink_me"; }
+		}elseif(($rowdb2['PROGRESSSTATUS']=="2" or $rowdb2['PROGRESSSTATUS']=="3") and $rowdb2['LONGDESCRIPTION']=="" ){
+			if($rowdb2['STSDEMAND']=="Normal"){	$warnaD01="bg-orange pro"; }else{ $warnaD01="bg-orange pro blink_me"; }
+		}else{
+			$warnaD01="btn-default";
+		}	
+	return $warnaD01;
+}
+function Rajut($mc)
+{
+include"../koneksi.php";	
+$sqlDB2 =" 
+SELECT *
+FROM (
+SELECT 
+CASE  
+WHEN (IDS = '2 ,0' OR IDS = '0 ,2' OR IDS = '2 ,2' OR IDS = '2 ,3' OR IDS = '2 ,0 ,0' OR IDS = '2 ,2 ,3' 
+OR IDS = '2 ,2 ,0' OR IDS = '0 ,0 ,2' OR IDS = '0 ,2 ,0 ,0' OR IDS = '2 ,2 ,0 ,0' OR IDS = '2 ,2 ,0 ,2' OR IDS = '3 ,2 ,0 ,2' 
+OR IDS = '2 ,3 ,0 ,3' OR IDS = '2 ,2 ,3 ,0 ,2' ) AND STSMC.STEPNUMBER IS NULL THEN 1
+WHEN STSMC.STEPNUMBER >= 2 AND STSMC.STEPNUMBER <= 7  THEN 2
+WHEN STSMC.STEPNUMBER = 1 THEN 4
+ELSE 3
+END AS URUT,
+STSMC1.IDS,
+PRODUCTIONDEMAND.PROJECTCODE,PRODUCTIONDEMAND.BASEPRIMARYQUANTITY,PRODUCTIONDEMAND.CODE,PRODUCTIONDEMAND.SUBCODE02,PRODUCTIONDEMAND.SUBCODE03,
+PRODUCTIONDEMAND.SUBCODE04,PRODUCTIONDEMAND.PROGRESSSTATUS,SCHEDULESOFSTEPSPLITS.SCHEDULEDRESOURCECODE,
+STSMC.STEPNUMBER,STSMC.LONGDESCRIPTION,STSMC.PLANNEDOPERATIONCODE,STDR.STDRAJUT,
+CASE  
+WHEN AD3.VALUESTRING = 0 OR AD3.VALUESTRING IS NULL  THEN 'Normal'
+WHEN AD3.VALUESTRING = 1  THEN 'Urgent'
+END AS STSDEMAND,
+AD4.VALUEDECIMAL AS QTYSALIN
+FROM DB2ADMIN.PRODUCTIONDEMAND 
+LEFT OUTER JOIN DB2ADMIN.SCHEDULESOFSTEPSPLITS SCHEDULESOFSTEPSPLITS ON PRODUCTIONDEMAND.CODE = SCHEDULESOFSTEPSPLITS.CODE
+LEFT OUTER JOIN DB2ADMIN.ADSTORAGE ON ADSTORAGE.UNIQUEID = PRODUCTIONDEMAND.ABSUNIQUEID AND ADSTORAGE.NAMENAME ='MachineNo'
+LEFT OUTER JOIN DB2ADMIN.ADSTORAGE AD1 ON AD1.UNIQUEID = PRODUCTIONDEMAND.ABSUNIQUEID AND AD1.NAMENAME ='TglRencana'
+LEFT OUTER JOIN DB2ADMIN.ADSTORAGE AD2 ON AD2.UNIQUEID = PRODUCTIONDEMAND.ABSUNIQUEID AND AD2.NAMENAME ='RMPReqDate' 
+LEFT OUTER JOIN DB2ADMIN.ADSTORAGE AD3 ON AD3.UNIQUEID = PRODUCTIONDEMAND.ABSUNIQUEID AND AD3.NAMENAME ='StatusDemand'
+LEFT OUTER JOIN DB2ADMIN.ADSTORAGE AD4 ON AD4.UNIQUEID = PRODUCTIONDEMAND.ABSUNIQUEID AND AD4.NAMENAME ='QtySalin'
+LEFT OUTER JOIN (
+
+SELECT STEPNUMBER,PLANNEDOPERATIONCODE,PROGRESSSTATUS,LONGDESCRIPTION,PRODUCTIONDEMANDCODE  FROM PRODUCTIONDEMANDSTEP 
+WHERE PROGRESSSTATUS ='2' AND 
+NOT (PLANNEDOPERATIONCODE='KNT1' OR PLANNEDOPERATIONCODE='INS1')
+ORDER BY STEPNUMBER DESC
+
+) STSMC ON STSMC.PRODUCTIONDEMANDCODE=PRODUCTIONDEMAND.CODE
+LEFT OUTER JOIN (
+
+SELECT 
+trim(LISTAGG (PROGRESSSTATUS , ',') WITHIN GROUP(ORDER BY PRODUCTIONDEMANDCODE ASC)) as IDS	,
+PRODUCTIONDEMANDCODE
+FROM PRODUCTIONDEMANDSTEP 
+WHERE (OPERATIONCODE='INS1' OR OPERATIONCODE='KNT1')
+GROUP BY PRODUCTIONDEMANDCODE
+
+) STSMC1 ON STSMC1.PRODUCTIONDEMANDCODE=PRODUCTIONDEMAND.CODE
+LEFT OUTER JOIN (
+SELECT ADSTORAGE.NAMENAME,ADSTORAGE.FIELDNAME,(ADSTORAGE.VALUEDECIMAL* 24) AS STDRAJUT,PRODUCT.SUBCODE02,PRODUCT.SUBCODE03,PRODUCT.SUBCODE04
+FROM DB2ADMIN.PRODUCT PRODUCT LEFT OUTER JOIN DB2ADMIN.ADSTORAGE ADSTORAGE ON PRODUCT.ABSUNIQUEID=ADSTORAGE.UNIQUEID 
+WHERE ADSTORAGE.NAMENAME='ProductionRate' AND PRODUCT.ITEMTYPECODE='KGF'        
+ORDER BY ADSTORAGE.FIELDNAME
+) STDR ON STDR.SUBCODE02=PRODUCTIONDEMAND.SUBCODE02 AND
+STDR.SUBCODE03=PRODUCTIONDEMAND.SUBCODE03 AND
+STDR.SUBCODE04=PRODUCTIONDEMAND.SUBCODE04
+WHERE PRODUCTIONDEMAND.ITEMTYPEAFICODE  ='KGF' AND 
+(ADSTORAGE.VALUESTRING='$mc' OR SCHEDULESOFSTEPSPLITS.SCHEDULEDRESOURCECODE='$mc' ) AND 
+(PRODUCTIONDEMAND.PROGRESSSTATUS='2' OR PRODUCTIONDEMAND.PROGRESSSTATUS='3')
+ORDER BY STSMC.STEPNUMBER DESC ) STSLAYAR
+ORDER BY STSLAYAR.URUT ASC
+ ";
+$stmt   = db2_exec($conn1,$sqlDB2, array('cursor'=>DB2_SCROLLABLE));
+$rowdb2 = db2_fetch_assoc($stmt);
+$artNO	= trim($rowdb2['SUBCODE02'])."".trim($rowdb2['SUBCODE03'])." ".trim($rowdb2['SUBCODE04']);	
+$sqlDB2M =" 
+SELECT x.LONGDESCRIPTION,SHORTDESCRIPTION  FROM DB2ADMIN.USERGENERICGROUP x
+WHERE x.CODE='$mc'
+ ";
+$stmtM   = db2_exec($conn1,$sqlDB2M, array('cursor'=>DB2_SCROLLABLE));
+$rowdb2M = db2_fetch_assoc($stmtM);	
+
+$sqlDB22 =" SELECT COUNT(WEIGHTREALNET ) AS JML, SUM(WEIGHTREALNET ) AS JQTY FROM 
+ELEMENTSINSPECTION WHERE DEMANDCODE ='$rowdb2[CODE]' AND ELEMENTITEMTYPECODE='KGF'";	
+$stmt2   = db2_exec($conn1,$sqlDB22, array('cursor'=>DB2_SCROLLABLE));
+$rowdb22 = db2_fetch_assoc($stmt2);
+	
+if($rowdb2['BASEPRIMARYQUANTITY']>0){
+		$kRajut=round($rowdb2['BASEPRIMARYQUANTITY']-$rowdb2['QTYSALIN'],2)- round($rowdb22['JQTY'],2);
+}else{
+$kRajut="0";
+}	
+$uk  = str_replace("'","",$rowdb2M['SHORTDESCRIPTION']);
+$uk1 = str_replace("'","",$uk);
+$uk2 = str_replace('"','',$uk1);
+$ukuran = $uk2;	
+echo "<h3><u>".$mc."</u></h3>Ukuran: ".$ukuran."<br> No PO: ".$rowdb2['PROJECTCODE']."<br>  No Art: ".$artNO."<br> Kurang Rajut: ".$kRajut."Kg<br> Catatan: ".$rowdb2M['LONGDESCRIPTION'];
+}
+function Kurang($mc)
+{
+	include"../koneksi.php";
+	$sqlDB2 =" 
+SELECT *
+FROM (
+SELECT 
+CASE  
+WHEN (IDS = '2 ,0' OR IDS = '0 ,2' OR IDS = '2 ,2' OR IDS = '2 ,3' OR IDS = '2 ,0 ,0' OR IDS = '2 ,2 ,3' 
+OR IDS = '2 ,2 ,0' OR IDS = '0 ,0 ,2' OR IDS = '0 ,2 ,0 ,0' OR IDS = '2 ,2 ,0 ,0' OR IDS = '2 ,2 ,0 ,2' OR IDS = '3 ,2 ,0 ,2' 
+OR IDS = '2 ,3 ,0 ,3' OR IDS = '2 ,2 ,3 ,0 ,2' ) AND STSMC.STEPNUMBER IS NULL THEN 1
+WHEN STSMC.STEPNUMBER >= 2 AND STSMC.STEPNUMBER <= 7  THEN 2
+WHEN STSMC.STEPNUMBER = 1 THEN 4
+ELSE 3
+END AS URUT,
+STSMC1.IDS,
+PRODUCTIONDEMAND.CODE,PRODUCTIONDEMAND.BASEPRIMARYQUANTITY,PRODUCTIONDEMAND.PROGRESSSTATUS,SCHEDULESOFSTEPSPLITS.SCHEDULEDRESOURCECODE,
+STSMC.STEPNUMBER,STSMC.LONGDESCRIPTION,STSMC.PLANNEDOPERATIONCODE,
+CASE  
+WHEN AD3.VALUESTRING = 0 OR AD3.VALUESTRING IS NULL  THEN 'Normal'
+WHEN AD3.VALUESTRING = 1  THEN 'Urgent'
+END AS STSDEMAND,
+AD4.VALUEDECIMAL AS QTYSALIN
+FROM DB2ADMIN.PRODUCTIONDEMAND 
+LEFT OUTER JOIN DB2ADMIN.SCHEDULESOFSTEPSPLITS SCHEDULESOFSTEPSPLITS ON PRODUCTIONDEMAND.CODE = SCHEDULESOFSTEPSPLITS.CODE
+LEFT OUTER JOIN DB2ADMIN.ADSTORAGE ON ADSTORAGE.UNIQUEID = PRODUCTIONDEMAND.ABSUNIQUEID AND ADSTORAGE.NAMENAME ='MachineNo'
+LEFT OUTER JOIN DB2ADMIN.ADSTORAGE AD1 ON AD1.UNIQUEID = PRODUCTIONDEMAND.ABSUNIQUEID AND AD1.NAMENAME ='TglRencana'
+LEFT OUTER JOIN DB2ADMIN.ADSTORAGE AD2 ON AD2.UNIQUEID = PRODUCTIONDEMAND.ABSUNIQUEID AND AD2.NAMENAME ='RMPReqDate' 
+LEFT OUTER JOIN DB2ADMIN.ADSTORAGE AD3 ON AD3.UNIQUEID = PRODUCTIONDEMAND.ABSUNIQUEID AND AD3.NAMENAME ='StatusDemand'
+LEFT OUTER JOIN DB2ADMIN.ADSTORAGE AD4 ON AD4.UNIQUEID = PRODUCTIONDEMAND.ABSUNIQUEID AND AD4.NAMENAME ='QtySalin'
+LEFT OUTER JOIN (
+
+SELECT STEPNUMBER,PLANNEDOPERATIONCODE,PROGRESSSTATUS,LONGDESCRIPTION,PRODUCTIONDEMANDCODE  FROM PRODUCTIONDEMANDSTEP 
+WHERE PROGRESSSTATUS ='2' AND 
+NOT (PLANNEDOPERATIONCODE='KNT1' OR PLANNEDOPERATIONCODE='INS1')
+ORDER BY STEPNUMBER DESC
+
+) STSMC ON STSMC.PRODUCTIONDEMANDCODE=PRODUCTIONDEMAND.CODE
+LEFT OUTER JOIN (
+
+SELECT 
+trim(LISTAGG (PROGRESSSTATUS , ',') WITHIN GROUP(ORDER BY PRODUCTIONDEMANDCODE ASC)) as IDS	,
+PRODUCTIONDEMANDCODE
+FROM PRODUCTIONDEMANDSTEP 
+WHERE (OPERATIONCODE='INS1' OR OPERATIONCODE='KNT1')
+GROUP BY PRODUCTIONDEMANDCODE
+
+) STSMC1 ON STSMC1.PRODUCTIONDEMANDCODE=PRODUCTIONDEMAND.CODE
+
+WHERE PRODUCTIONDEMAND.ITEMTYPEAFICODE  ='KGF' AND 
+(ADSTORAGE.VALUESTRING='$mc' OR SCHEDULESOFSTEPSPLITS.SCHEDULEDRESOURCECODE='$mc' ) AND 
+(PRODUCTIONDEMAND.PROGRESSSTATUS='2' OR PRODUCTIONDEMAND.PROGRESSSTATUS='3')
+ORDER BY STSMC.STEPNUMBER DESC ) STSLAYAR
+ORDER BY STSLAYAR.URUT ASC
+ ";
+$stmt   = db2_exec($conn1,$sqlDB2, array('cursor'=>DB2_SCROLLABLE));
+$rowdb2 = db2_fetch_assoc($stmt);
+
+$sqlDB22 =" SELECT COUNT(WEIGHTREALNET ) AS JML, SUM(WEIGHTREALNET ) AS JQTY FROM 
+ELEMENTSINSPECTION WHERE DEMANDCODE ='$rowdb2[CODE]' AND ELEMENTITEMTYPECODE='KGF'";	
+$stmt2   = db2_exec($conn1,$sqlDB22, array('cursor'=>DB2_SCROLLABLE));
+$rowdb22 = db2_fetch_assoc($stmt2);
+	
+if($rowdb2['BASEPRIMARYQUANTITY']>0){
+		$kRajut=round($rowdb2['BASEPRIMARYQUANTITY']-$rowdb2['QTYSALIN'],0)- round($rowdb22['JQTY'],0);
+}else{
+$kRajut="0";
+}	
+return $kRajut;    
+}
+function waktu($mc){
+include"../koneksi.php";
+$sqlDB2 ="
+SELECT *,CURRENT_TIMESTAMP AS TGLS
+FROM (
+SELECT 
+CASE  
+WHEN (IDS = '2 ,0' OR IDS = '0 ,2' OR IDS = '2 ,2' OR IDS = '2 ,3' OR IDS = '2 ,0 ,0' OR IDS = '2 ,2 ,3' 
+OR IDS = '2 ,2 ,0' OR IDS = '0 ,0 ,2' OR IDS = '0 ,2 ,0 ,0' OR IDS = '2 ,2 ,0 ,0' OR IDS = '2 ,2 ,0 ,2' OR IDS = '3 ,2 ,0 ,2' 
+OR IDS = '2 ,3 ,0 ,3' OR IDS = '2 ,2 ,3 ,0 ,2' ) AND STSMC.STEPNUMBER IS NULL THEN 1
+WHEN STSMC.STEPNUMBER >= 2 AND STSMC.STEPNUMBER <= 7  THEN 2
+WHEN STSMC.STEPNUMBER = 1 THEN 4
+ELSE 3
+END AS URUT,
+STSMC1.IDS,
+PRODUCTIONDEMAND.CODE,PRODUCTIONDEMAND.BASEPRIMARYQUANTITY,PRODUCTIONDEMAND.PROGRESSSTATUS,SCHEDULESOFSTEPSPLITS.SCHEDULEDRESOURCECODE,
+STSMC.STEPNUMBER,STSMC.LONGDESCRIPTION,STSMC.PLANNEDOPERATIONCODE,STDR.STDRAJUT,
+CASE  
+WHEN AD3.VALUESTRING = 0 OR AD3.VALUESTRING IS NULL  THEN 'Normal'
+WHEN AD3.VALUESTRING = 1  THEN 'Urgent'
+END AS STSDEMAND 
+FROM DB2ADMIN.PRODUCTIONDEMAND 
+LEFT OUTER JOIN DB2ADMIN.SCHEDULESOFSTEPSPLITS SCHEDULESOFSTEPSPLITS ON PRODUCTIONDEMAND.CODE = SCHEDULESOFSTEPSPLITS.CODE
+LEFT OUTER JOIN DB2ADMIN.ADSTORAGE ON ADSTORAGE.UNIQUEID = PRODUCTIONDEMAND.ABSUNIQUEID AND ADSTORAGE.NAMENAME ='MachineNo'
+LEFT OUTER JOIN DB2ADMIN.ADSTORAGE AD1 ON AD1.UNIQUEID = PRODUCTIONDEMAND.ABSUNIQUEID AND AD1.NAMENAME ='TglRencana'
+LEFT OUTER JOIN DB2ADMIN.ADSTORAGE AD2 ON AD2.UNIQUEID = PRODUCTIONDEMAND.ABSUNIQUEID AND AD2.NAMENAME ='RMPReqDate' 
+LEFT OUTER JOIN DB2ADMIN.ADSTORAGE AD3 ON AD3.UNIQUEID = PRODUCTIONDEMAND.ABSUNIQUEID AND AD3.NAMENAME ='StatusDemand'
+LEFT OUTER JOIN (
+SELECT STEPNUMBER,PLANNEDOPERATIONCODE,PROGRESSSTATUS,LONGDESCRIPTION,PRODUCTIONDEMANDCODE  FROM PRODUCTIONDEMANDSTEP 
+WHERE PROGRESSSTATUS ='2' AND 
+NOT (PLANNEDOPERATIONCODE='KNT1' OR PLANNEDOPERATIONCODE='INS1')
+ORDER BY STEPNUMBER DESC
+) STSMC ON STSMC.PRODUCTIONDEMANDCODE=PRODUCTIONDEMAND.CODE
+LEFT OUTER JOIN (
+
+SELECT 
+trim(LISTAGG (PROGRESSSTATUS , ',') WITHIN GROUP(ORDER BY PRODUCTIONDEMANDCODE ASC)) as IDS	,
+PRODUCTIONDEMANDCODE
+FROM PRODUCTIONDEMANDSTEP 
+WHERE (OPERATIONCODE='INS1' OR OPERATIONCODE='KNT1')
+GROUP BY PRODUCTIONDEMANDCODE
+
+) STSMC1 ON STSMC1.PRODUCTIONDEMANDCODE=PRODUCTIONDEMAND.CODE
+
+LEFT OUTER JOIN (
+SELECT ADSTORAGE.NAMENAME,ADSTORAGE.FIELDNAME,(ADSTORAGE.VALUEDECIMAL* 24) AS STDRAJUT,PRODUCT.SUBCODE02,PRODUCT.SUBCODE03,PRODUCT.SUBCODE04
+FROM DB2ADMIN.PRODUCT PRODUCT LEFT OUTER JOIN DB2ADMIN.ADSTORAGE ADSTORAGE ON PRODUCT.ABSUNIQUEID=ADSTORAGE.UNIQUEID 
+WHERE ADSTORAGE.NAMENAME='ProductionRate' AND PRODUCT.ITEMTYPECODE='KGF'        
+ORDER BY ADSTORAGE.FIELDNAME
+) STDR ON STDR.SUBCODE02=PRODUCTIONDEMAND.SUBCODE02 AND
+STDR.SUBCODE03=PRODUCTIONDEMAND.SUBCODE03 AND
+STDR.SUBCODE04=PRODUCTIONDEMAND.SUBCODE04
+WHERE PRODUCTIONDEMAND.ITEMTYPEAFICODE  ='KGF' AND 
+(ADSTORAGE.VALUESTRING='$mc' OR SCHEDULESOFSTEPSPLITS.SCHEDULEDRESOURCECODE='$mc' ) AND 
+(PRODUCTIONDEMAND.PROGRESSSTATUS='2' OR PRODUCTIONDEMAND.PROGRESSSTATUS='3')
+ORDER BY STSMC.STEPNUMBER DESC ) STSLAYAR
+ORDER BY STSLAYAR.URUT ASC
+ ";
+$stmt   = db2_exec($conn1,$sqlDB2, array('cursor'=>DB2_SCROLLABLE));
+$rowdb2 = db2_fetch_assoc($stmt);
+	
+$sqlDB22 =" SELECT COUNT(WEIGHTREALNET ) AS JML, SUM(WEIGHTREALNET ) AS JQTY FROM 
+ELEMENTSINSPECTION WHERE DEMANDCODE ='$rowdb2[CODE]' AND ELEMENTITEMTYPECODE='KGF'";	
+$stmt2   = db2_exec($conn1,$sqlDB22, array('cursor'=>DB2_SCROLLABLE));
+$rowdb22 = db2_fetch_assoc($stmt2);
+	
+if($rowdb2['BASEPRIMARYQUANTITY']>0){
+		$kRajut=round($rowdb2['BASEPRIMARYQUANTITY'],0)- round($rowdb22['JQTY'],0);
+}else{
+$kRajut=0;
+}	
+$sqlDB25 =" SELECT COUNT(WEIGHTREALNET ) AS JML,INSPECTIONENDDATETIME FROM 
+ELEMENTSINSPECTION WHERE DEMANDCODE ='$rowdb2[CODE]' AND ELEMENTITEMTYPECODE='KGF' AND QUALITYREASONCODE='PM'
+GROUP BY INSPECTIONENDDATETIME ";	
+$stmt5   = db2_exec($conn1,$sqlDB25, array('cursor'=>DB2_SCROLLABLE));
+$rowdb25 = db2_fetch_assoc($stmt5);
+	
+$sqlDB26 ="  SELECT LASTUPDATEDATETIME  FROM DB2ADMIN.PRODUCTIONDEMANDSTEP x
+WHERE PRODUCTIONDEMANDCODE ='$rowdb2[CODE]' AND PROGRESSSTATUS ='2' ";	
+$stmt6   = db2_exec($conn1,$sqlDB26, array('cursor'=>DB2_SCROLLABLE));
+$rowdb26 = db2_fetch_assoc($stmt6);	
+	
+$sqlDB27 =" SELECT LASTUPDATEDATETIME  FROM  
+PRODUCTIONDEMAND WHERE CODE ='$rowdb2[CODE]' AND ITEMTYPEAFICODE='KGF' AND COMPANYCODE ='100' 
+ORDER BY LASTUPDATEDATETIME ASC LIMIT 1";	
+$stmt7   = db2_exec($conn1,$sqlDB27, array('cursor'=>DB2_SCROLLABLE));
+$rowdb27 = db2_fetch_assoc($stmt7);	
+	
+		$awalPR  = strtotime($rowdb2['TGLS']);
+		$akhirPR = strtotime($rowdb25['INSPECTIONENDDATETIME']);
+		$diffPR  = ($akhirPR - $awalPR);
+		$tjamPR  = round($diffPR/(60 * 60),2);
+		$hariPR  = round($tjamPR/24,2);	
+	
+		$awalPC  = strtotime($rowdb2['TGLS']);
+		$akhirPC = strtotime($rowdb26['LASTUPDATEDATETIME']);
+		$diffPC  = ($akhirPC - $awalPC);
+		$tjamPC  = round($diffPC/(60 * 60),2);
+		$hariPC = round($tjamPC/24,1);
+		
+		$awalPC1  = strtotime($rowdb2['TGLS']);
+		$akhirPC1 = strtotime($rowdb27['LASTUPDATEDATETIME']);
+		$diffPC1  = ($akhirPC1 - $awalPC1);
+		$tjamPC1  = round($diffPC1/(60 * 60),2);
+		$hariPC1 = round($tjamPC1/24,1);
+	
+if(($rowdb2['PROGRESSSTATUS']=="2" or $rowdb2['PROGRESSSTATUS']=="3") and $rowdb25['JML']>"0" ){
+			$warnaD01="btn-danger";
+			$totHari=abs($hariPR);
+		}elseif(($rowdb2['PROGRESSSTATUS']=="2" or $rowdb2['PROGRESSSTATUS']=="3") and trim($rowdb2['PLANNEDOPERATIONCODE'])=="HOLD" ){
+			if($rowdb2['STSDEMAND']=="Normal"){	$warnaD01="bg-black"; }else{ $warnaD01="bg-black blink_me"; }
+			$totHari=abs($hariPC);
+		}elseif(($rowdb2['PROGRESSSTATUS']=="2" or $rowdb2['PROGRESSSTATUS']=="3") and trim($rowdb2['PLANNEDOPERATIONCODE'])=="PBS" ){
+			if($rowdb2['STSDEMAND']=="Normal"){	$warnaD01="bg-pink"; }else{ $warnaD01="bg-pink blink_me"; }
+			$totHari=abs($hariPC);
+		}elseif(($rowdb2['PROGRESSSTATUS']=="2" or $rowdb2['PROGRESSSTATUS']=="3") and trim($rowdb2['PLANNEDOPERATIONCODE'])=="PBG" ){
+			if($rowdb2['STSDEMAND']=="Normal"){	$warnaD01="bg-orange"; }else{ $warnaD01="bg-orange blink_me"; }
+			$totHari=abs($hariPC);
+		}elseif(($rowdb2['PROGRESSSTATUS']=="2" or $rowdb2['PROGRESSSTATUS']=="3") and trim($rowdb2['PLANNEDOPERATIONCODE'])=="AMC" ){
+			if($rowdb2['STSDEMAND']=="Normal"){	$warnaD01="bg-yellow"; }else{ $warnaD01="bg-yellow blink_me"; }
+			$totHari=abs($hariPC);
+		}elseif(($rowdb2['PROGRESSSTATUS']=="2" or $rowdb2['PROGRESSSTATUS']=="3") and trim($rowdb2['PLANNEDOPERATIONCODE'])=="TPB" ){
+			if($rowdb2['STSDEMAND']=="Normal"){	$warnaD01="bg-purple"; }else{ $warnaD01="bg-purple blink_me"; }
+			$totHari=abs($hariPC);
+		}elseif(($rowdb2['PROGRESSSTATUS']=="2" or $rowdb2['PROGRESSSTATUS']=="3") and trim($rowdb2['PLANNEDOPERATIONCODE'])=="TST" ){
+			if($rowdb2['STSDEMAND']=="Normal"){	$warnaD01="bg-blue"; }else{ $warnaD01="bg-blue blink_me"; }
+			$totHari=abs($hariPC);
+		}elseif(($rowdb2['PROGRESSSTATUS']=="2" or $rowdb2['PROGRESSSTATUS']=="3") and trim($rowdb2['PLANNEDOPERATIONCODE'])=="TTQ" ){
+			if($rowdb2['STSDEMAND']=="Normal"){	$warnaD01="bg-gray"; }else{ $warnaD01="bg-gray blink_me"; }
+			$totHari=abs($hariPC);
+		}else if(($rowdb2['PROGRESSSTATUS']=="2" or $rowdb2['PROGRESSSTATUS']=="3") 
+		and ($rowdb2['IDS']=="2 ,0" or $rowdb2['IDS']=="0 ,2" or $rowdb2['IDS']=="2 ,2" or $rowdb2['IDS']=="2 ,3" or
+		$rowdb2['IDS']=="2 ,2 ,3" or $rowdb2['IDS']=="2 ,0 ,0" or $rowdb2['IDS']=="2 ,2 ,0" or $rowdb2['IDS']=="0 ,0 ,2" or
+		$rowdb2['IDS']=="0 ,2 ,0 ,0" or	$rowdb2['IDS']=="2 ,2 ,0 ,2" or $rowdb2['IDS']=="2 ,2 ,0 ,0" or $rowdb2['IDS']=="3 ,2 ,0 ,2" or $rowdb2['IDS']=="2 ,3 ,0 ,3" or $rowdb2['IDS']=="2 ,2 ,3 ,0 ,2") ) {
+			if($rowdb2['STSDEMAND']=="Normal"){	$warnaD01="bg-green"; }else{ $warnaD01="bg-green blink_me"; }
+		}elseif(($rowdb2['PROGRESSSTATUS']=="2" or $rowdb2['PROGRESSSTATUS']=="3") and $rowdb2['LONGDESCRIPTION']=="" ){
+			if($rowdb2['STSDEMAND']=="Normal"){	$warnaD01="bg-orange pro"; }else{ $warnaD01="bg-orange pro blink_me"; }
+			$totHari=abs($hariPC1);
+		}else{
+			$warnaD01="btn-default";
+		}	
+	if($rowdb2['STDRAJUT']>0 and ($warnaD01=="bg-green" or $warnaD01=="bg-green blink_me") ){
+		$est =round($kRajut/$rowdb2['STDRAJUT'],1);
+	}else{
+		$est="";
+	}
+	if($est==""){ $hriT=$totHari;}else{ $hriT=$est;}
+	echo "<font color=black>$hriT</font>";
+}							
+?>
+<?php
+/* Total Status Mesin */
+?>
+<div class="container-fluid">
+  <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Status Mesin Rajut Knitting ITTI Lantai 1</h3>				 
+			</div>
+              <!-- /.card-header -->
+              <div class="card-body table-responsive">
+<table width="100%" border="0">
+							<tr>
+								<td><a><span class="detail_status btn  <?php echo NoMesin("SO11P003"); ?>" id="SO11P003" data-toggle="tooltip" data-html="true" data-placement="right" title="<?php echo Rajut("SO11P003"); ?>">M03<br>
+											<p>
+												<?php echo Kurang("SO11P003"); ?><br><br><?php waktu("SO11P003"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn  <?php echo NoMesin("SO11P002"); ?>" id="SO11P002" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("SO11P002"); ?>">M02<br>
+											<p>
+												<?php echo Kurang("SO11P002"); ?><br><br><?php waktu("SO11P002"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn  <?php echo NoMesin("SO11P001"); ?>" id="SO11P001" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("SO11P001"); ?>">M01<br>
+											<p>
+												<?php echo Kurang("SO11P001"); ?><br><br><?php waktu("SO11P001"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn  <?php echo NoMesin("RI11P008"); ?>" id="RI11P008" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("RI11P008"); ?>">R8&nbsp;&nbsp;<br>
+											<p>
+												<?php echo Kurang("RI11P008"); ?><br><br><?php waktu("RI11P008"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn  <?php echo NoMesin("RI11P001"); ?>" id="RI11P001" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("RI11P001"); ?>">R1&nbsp;&nbsp;<br>
+											<p>
+												<?php echo Kurang("RI11P001"); ?><br><br><?php waktu("RI11P001"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn  <?php echo NoMesin("TF11U013"); ?>" id="TF11U013" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("TF11U013"); ?>">E13<br>
+											<p>
+												<?php echo Kurang("TF11U013"); ?><br><br><?php waktu("TF11U013"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn  <?php echo NoMesin("TF11U016"); ?>" id="TF11U016" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("TF11U016"); ?>">E16<br>
+											<p>
+												<?php echo Kurang("TF11U016"); ?><br><br><?php waktu("TF11U016"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn  <?php echo NoMesin("ST11P027"); ?>" id="ST11P027" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("ST11P027"); ?>">M27<br>
+											<p>
+												<?php echo Kurang("ST11P027"); ?><br><br><?php waktu("ST11P027"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn  <?php echo NoMesin("ST11P036"); ?>" id="ST11P036" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("ST11P036"); ?>">M36<br>
+											<p>
+												<?php echo Kurang("ST11P036"); ?><br><br><?php waktu("ST11P036"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn  <?php echo NoMesin("TT11U003"); ?>" id="TT11U003" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("TT11U003"); ?>">E03<br>
+											<p>
+												<?php echo Kurang("TT11U003"); ?><br><br><?php waktu("TT11U003"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn  <?php echo NoMesin("TF11U038"); ?>" id="TF11U038" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("TF11U038"); ?>">E38<br>
+											<p>
+												<?php echo Kurang("TF11U038"); ?><br><br><?php waktu("TF11U038"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn  <?php echo NoMesin("TF11U044"); ?>" id="TF11U044" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("TF11U044"); ?>">E44<br>
+											<p>
+												<?php echo Kurang("TF11U044"); ?><br><br><?php waktu("TF11U044"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn  <?php echo NoMesin("SO11P052"); ?>" id="SO11P052" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("SO11P052"); ?>">M52<br>
+											<p>
+												<?php echo Kurang("SO11P052"); ?><br><br><?php waktu("SO11P052"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn  <?php echo NoMesin("SO11P047"); ?>" id="SO11P047" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("SO11P047"); ?>">M47<br>
+											<p>
+												<?php echo Kurang("SO11P047"); ?><br><br><?php waktu("SO11P047"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn  <?php echo NoMesin("SO11P042"); ?>" id="SO11P042" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("SO11P042"); ?>">M42<br>
+											<p>
+												<?php echo Kurang("SO11P042"); ?><br><br><?php waktu("SO11P042"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P037"); ?>" id="SO11P037" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("SO11P037"); ?>">M37<br>
+											<p>
+												<?php echo Kurang("SO11P037"); ?><br><br><?php waktu("SO11P037"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P057"); ?>" id="SO11P057" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("SO11P057"); ?>">M57<br>
+											<p>
+												<?php echo Kurang("SO11P057"); ?><br><br><?php waktu("SO11P057"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P062"); ?>" id="SO11P062" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("SO11P062"); ?>">M62<br>
+											<p>
+												<?php echo Kurang("SO11P062"); ?><br><br><?php waktu("SO11P062"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P077"); ?>" id="SO11P077" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("SO11P077"); ?>">M77<br>
+											<p>
+												<?php echo Kurang("SO11P077"); ?><br><br><?php waktu("SO11P077"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P069"); ?>" id="ST11P069" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("ST11P069"); ?>">M69<br>
+											<p>
+												<?php echo Kurang("ST11P069"); ?><br><br><?php waktu("ST11P069"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P070"); ?>" id="ST11P070" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("ST11P070"); ?>">M70<br>
+											<p>
+												<?php echo Kurang("ST11P070"); ?><br><br><?php waktu("ST11P070"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J021"); ?>" id="DO11J021" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("DO11J021"); ?>">D21<br>
+											<p>
+												<?php echo Kurang("DO11J021"); ?><br><br><?php waktu("DO11J021"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J016"); ?>" id="DO11J016" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("DO11J016"); ?>">D16<br>
+											<p>
+												<?php echo Kurang("DO11J016"); ?><br><br><?php waktu("DO11J016"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J011"); ?>" id="DO11J011" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("DO11J011"); ?>">D11<br>
+											<p>
+												<?php echo Kurang("DO11J011"); ?><br><br><?php waktu("DO11J011"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J006"); ?>" id="DO11J006" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("DO11J006"); ?>">D06<br>
+											<p>
+												<?php echo Kurang("DO11J006"); ?><br><br><?php waktu("DO11J006"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J001"); ?>" id="DO11J001" data-toggle="tooltip" data-html="true" data-placement="left" title="<?php echo Rajut("DO11J001"); ?>">D01<br>
+											<p>
+												<?php echo Kurang("DO11J001"); ?><br><br><?php waktu("DO11J001"); ?>
+											</p>
+										</span></a></td>
+							</tr>
+							<tr>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P005"); ?>" id="SO11P005" data-toggle="tooltip" data-html="true" data-placement="right" title="<?php echo Rajut("SO11P005"); ?>">M05<br>
+											<p>
+												<?php echo Kurang("SO11P005"); ?><br><br><?php waktu("SO11P005"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P009"); ?>" id="SO11P009" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("SO11P009"); ?>">M09<br>
+											<p>
+												<?php echo Kurang("SO11P009"); ?><br><br><?php waktu("SO11P009"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P008"); ?>" id="SO11P008" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("SO11P008"); ?>">M08<br>
+											<p><?php echo Kurang("SO11P008"); ?><br><br><?php waktu("SO11P008"); ?></p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("RI11P009"); ?>" id="RI11P009" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("RI11P009"); ?>">R9&nbsp;&nbsp;<br>
+											<p>
+												<?php echo Kurang("RI11P009"); ?><br><br><?php waktu("RI11P009"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("RI11P002"); ?>" id="RI11P002" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("RI11P002"); ?>">R2&nbsp;&nbsp;<br>
+											<p>
+												<?php echo Kurang("RI11P002"); ?><br><br><?php waktu("RI11P002"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U015"); ?>" id="TF11U015" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("TF11U015"); ?>">E15<br>
+											<p>
+												<?php echo Kurang("TF11U015"); ?><br><br><?php waktu("TF11U015"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U018"); ?>" id="TF11U018" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("TF11U018"); ?>">E18<br>
+											<p>
+												<?php echo Kurang("TF11U018"); ?><br><br><?php waktu("TF11U018"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P028"); ?>" id="ST11P028" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("ST11P028"); ?>">M28<br>
+											<p>
+												<?php echo Kurang("ST11P028"); ?><br><br><?php waktu("ST11P028"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P035"); ?>" id="ST11P035" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("ST11P035"); ?>">M35<br>
+											<p>
+												<?php echo Kurang("ST11P035"); ?><br><br><?php waktu("ST11P035"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TT11U005"); ?>" id="TT11U005" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("TT11U005"); ?>">E05<br>
+											<p>
+												<?php echo Kurang("TT11U005"); ?><br><br><?php waktu("TT11U005"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U039"); ?>" id="TF11U039" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("TF11U039"); ?>">E39<br>
+											<p>
+												<?php echo Kurang("TF11U039"); ?><br><br><?php waktu("TF11U039"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U045"); ?>" id="TF11U045" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("TF11U045"); ?>">E45<br>
+											<p>
+												<?php echo Kurang("TF11U045"); ?><br><br><?php waktu("TF11U045"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P053"); ?>" id="SO11P053" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("SO11P053"); ?>">M53<br>
+											<p>
+												<?php echo Kurang("SO11P053"); ?><br><br><?php waktu("SO11P053"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P048"); ?>" id="SO11P048" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("SO11P048"); ?>">M48<br>
+											<p>
+												<?php echo Kurang("SO11P048"); ?><br><br><?php waktu("SO11P048"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P043"); ?>" id="SO11P043" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("SO11P043"); ?>">M43<br>
+											<p>
+												<?php echo Kurang("SO11P043"); ?><br><br><?php waktu("SO11P043"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P038"); ?>" id="SO11P038" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("SO11P038"); ?>">M38<br>
+											<p>
+												<?php echo Kurang("SO11P038"); ?><br><br><?php waktu("SO11P038"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P058"); ?>" id="SO11P058" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("SO11P058"); ?>">M58<br>
+											<p>
+												<?php echo Kurang("SO11P058"); ?><br><br><?php waktu("SO11P058"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P063"); ?>" id="SO11P063" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("SO11P063"); ?>">M63<br>
+											<p>
+												<?php echo Kurang("SO11P063"); ?><br><br><?php waktu("SO11P063"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P078"); ?>" id="SO11P078" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("SO11P078"); ?>">M78<br>
+											<p>
+												<?php echo Kurang("SO11P078"); ?><br><br><?php waktu("SO11P078"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P068"); ?>" id="ST11P068" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("ST11P068"); ?>">M68<br>
+											<p>
+												<?php echo Kurang("ST11P068"); ?><br><br><?php waktu("ST11P068"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P071"); ?>" id="ST11P071" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("ST11P071"); ?>">M71<br>
+											<p>
+												<?php echo Kurang("ST11P071"); ?><br><br><?php waktu("ST11P071"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J022"); ?>" id="DO11J022" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("DO11J022"); ?>">D22<br>
+											<p>
+												<?php echo Kurang("DO11J022"); ?><br><br><?php waktu("DO11J022"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J017"); ?>" id="DO11J017" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("DO11J017"); ?>">D17<br>
+											<p>
+												<?php echo Kurang("DO11J017"); ?><br><br><?php waktu("DO11J017"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J012"); ?>" id="DO11J012" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("DO11J012"); ?>">D12<br>
+											<p>
+												<?php echo Kurang("DO11J012"); ?><br><br><?php waktu("DO11J012"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J007"); ?>" id="DO11J007" data-toggle="tooltip" data-html="true" data-placement="bottom" title="<?php echo Rajut("DO11J007"); ?>">D07<br>
+											<p>
+												<?php echo Kurang("DO11J007"); ?><br><br><?php waktu("DO11J007"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J002"); ?>" id="DO11J002" data-toggle="tooltip" data-html="true" data-placement="left" title="<?php echo Rajut("DO11J002"); ?>">D02<br>
+											<p>
+												<?php echo Kurang("DO11J002"); ?><br><br><?php waktu("DO11J002"); ?>
+											</p>
+										</span></a></td>
+							</tr>
+							<tr>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P006"); ?>" id="SO11P006" data-toggle="tooltip" data-html="true" data-placement="right" title="<?php echo Rajut("SO11P006"); ?>">M06<br>
+											<p>
+												<?php echo Kurang("SO11P006"); ?><br><br><?php waktu("SO11P006"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P011"); ?>" id="SO11P011" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P011"); ?>">M11<br>
+											<p>
+												<?php echo Kurang("SO11P011"); ?><br><br><?php waktu("SO11P011"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P010"); ?>" id="SO11P010" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P010"); ?>">M10<br>
+											<p>
+												<?php echo Kurang("SO11P010"); ?><br><br><?php waktu("SO11P010"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("RI11P010"); ?>" id="RI11P010" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("RI11P010"); ?>">R10<br>
+											<p>
+												<?php echo Kurang("RI11P010"); ?><br><br><?php waktu("RI11P010"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("RI11P003"); ?>" id="RI11P003" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("RI11P003"); ?>">R3&nbsp;&nbsp;<br>
+											<p>
+												<?php echo Kurang("RI11P003"); ?><br><br><?php waktu("RI11P003"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U014"); ?>" id="TF11U014" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U014"); ?>">E14<br>
+											<p>
+												<?php echo Kurang("TF11U014"); ?><br><br><?php waktu("TF11U014"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U017"); ?>" id="TF11U017" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U017"); ?>">E17<br>
+											<p>
+												<?php echo Kurang("TF11U017"); ?><br><br><?php waktu("TF11U017"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P029"); ?>" id="ST11P029" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("ST11P029"); ?>">M29<br>
+											<p>
+												<?php echo Kurang("ST11P029"); ?><br><br><?php waktu("ST11P029"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P034"); ?>" id="ST11P034" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("ST11P034"); ?>">M34<br>
+											<p>
+												<?php echo Kurang("ST11P034"); ?><br><br><?php waktu("ST11P034"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U021"); ?>" id="TF11U021" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U021"); ?>">E21<br>
+											<p>
+												<?php echo Kurang("TF11U021"); ?><br><br><?php waktu("TF11U021"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U040"); ?>" id="TF11U040" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U040"); ?>">E40<br>
+											<p>
+												<?php echo Kurang("TF11U040"); ?><br><br><?php waktu("TF11U040"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U046"); ?>" id="TF11U046" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U046"); ?>">E46<br>
+											<p>
+												<?php echo Kurang("TF11U046"); ?><br><br><?php waktu("TF11U046"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P054"); ?>" id="SO11P054" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P054"); ?>">M54<br>
+											<p>
+												<?php echo Kurang("SO11P054"); ?><br><br><?php waktu("SO11P054"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P049"); ?>" id="SO11P049" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P049"); ?>">M49<br>
+											<p>
+												<?php echo Kurang("SO11P049"); ?><br><br><?php waktu("SO11P049"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P044"); ?>" id="SO11P044" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P044"); ?>">M44<br>
+											<p>
+												<?php echo Kurang("SO11P044"); ?><br><br><?php waktu("SO11P044"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P039"); ?>" id="SO11P039" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P039"); ?>">M39<br>
+											<p>
+												<?php echo Kurang("SO11P039"); ?><br><br><?php waktu("SO11P039"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P059"); ?>" id="SO11P059" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P059"); ?>">M59<br>
+											<p>
+												<?php echo Kurang("SO11P059"); ?><br><br><?php waktu("SO11P059"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P064"); ?>" id="SO11P064" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P064"); ?>">M64<br>
+											<p>
+												<?php echo Kurang("SO11P064"); ?><br><br><?php waktu("SO11P064"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P079"); ?>" id="SO11P079" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P079"); ?>">M79<br>
+											<p>
+												<?php echo Kurang("SO11P079"); ?><br><br><?php waktu("SO11P079"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P072"); ?>" id="ST11P072" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("ST11P072"); ?>">M72<br>
+											<p>
+												<?php echo Kurang("ST11P072"); ?><br><br><?php waktu("ST11P072"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P073"); ?>" id="ST11P073" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("ST11P073"); ?>">M73<br>
+											<p>
+												<?php echo Kurang("ST11P073"); ?><br><br><?php waktu("ST11P073"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TT11U011"); ?>" id="TT11U011" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TT11U011"); ?>">E11<br>
+											<p>
+												<?php echo Kurang("TT11U011"); ?><br><br><?php waktu("TT11U011"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J018"); ?>" id="DO11J018" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("DO11J018"); ?>">D18<br>
+											<p>
+												<?php echo Kurang("DO11J018"); ?><br><br><?php waktu("DO11J018"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J013" ); ?>" id="DO11J013" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("DO11J013" ); ?>">D13<br>
+											<p>
+												<?php echo Kurang("DO11J013" ); ?><br><br><?php waktu("DO11J013"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J008"); ?>" id="DO11J008" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("DO11J008"); ?>">D08<br>
+											<p>
+												<?php echo Kurang("DO11J008"); ?><br><br><?php waktu("DO11J008"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J003"); ?>" id="DO11J003" data-toggle="tooltip" data-html="true" data-placement="left" title="<?php echo Rajut("DO11J003"); ?>">D03<br>
+											<p><?php echo Kurang("DO11J003"); ?><br><br><?php waktu("DO11J003"); ?></p>
+										</span></a></td>
+							</tr>
+							<tr>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P007"); ?>" id="SO11P010" data-toggle="tooltip" data-html="true" data-placement="right" title="<?php echo Rajut("SO11P007"); ?>">M07<br>
+											<p>
+												<?php echo Kurang("SO11P010"); ?><br><br><?php waktu("SO11P010"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P014"); ?>" id=""SO11P014"" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P014"); ?>">M14<br>
+											<p>
+												<?php echo Kurang("SO11P014"); ?><br><br><?php waktu("SO11P014"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P012"); ?>" id="SO11P012" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P012"); ?>">M12<br>
+											<p>
+												<?php echo Kurang("SO11P012"); ?><br><br><?php waktu("SO11P012"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("RI11P011"); ?>" id="RI11P011" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("RI11P011"); ?>">R11<br>
+											<p>
+												<?php echo Kurang("RI11P011"); ?><br><br><?php waktu("RI11P011"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("RI11P005"); ?>" id="RI11P005" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("RI11P005"); ?>">R5&nbsp;&nbsp;<br>
+											<p>
+												<?php echo Kurang("RI11P005"); ?><br><br><?php waktu("RI11P005"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U022"); ?>" id="TF11U022" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U022"); ?>">E22<br>
+											<p>
+												<?php echo Kurang("TF11U022"); ?><br><br><?php waktu("TF11U022"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U019"); ?>" id="TF11U019" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U019"); ?>">E19<br>
+											<p>
+												<?php echo Kurang("TF11U019"); ?><br><br><?php waktu("TF11U019"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P030"); ?>" id="ST11P030" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("ST11P030"); ?>">M30<br>
+											<p>
+												<?php echo Kurang("ST11P030"); ?><br><br><?php waktu("ST11P030"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P033"); ?>" id="ST11P033" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("ST11P033"); ?>">M33<br>
+											<p>
+												<?php echo Kurang("ST11P033"); ?><br><br><?php waktu("ST11P033"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U024"); ?>" id="TF11U024" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U024"); ?>">E24<br>
+											<p>
+												<?php echo Kurang("TF11U024"); ?><br><br><?php waktu("TF11U024"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U041"); ?>" id="TF11U041" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U041"); ?>">E41<br>
+											<p>
+												<?php echo Kurang("TF11U041"); ?><br><br><?php waktu("TF11U041"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U047"); ?>" id="TF11U047" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U047"); ?>">E47<br>
+											<p>
+												<?php echo Kurang("TF11U047"); ?><br><br><?php waktu("TF11U047"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U050"); ?>" id="TF11U050" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U050"); ?>">E50<br>
+											<p>
+												<?php echo Kurang("TF11U050"); ?><br><br><?php waktu("TF11U050"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P050"); ?>" id="SO11P050" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P050"); ?>">M50<br>
+											<p>
+												<?php echo Kurang("SO11P050"); ?><br><br><?php waktu("SO11P050"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P045"); ?>" id="SO11P045" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P045"); ?>">M45<br>
+											<p>
+												<?php echo Kurang("SO11P045"); ?><br><br><?php waktu("SO11P045"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P040"); ?>" id="SO11P040" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P040"); ?>">M40<br>
+											<p>
+												<?php echo Kurang("SO11P040"); ?><br><br><?php waktu("SO11P040"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P060"); ?>" id="SO11P060" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P060"); ?>">M60<br>
+											<p>
+												<?php echo Kurang("SO11P060"); ?><br><br><?php waktu("SO11P060"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P065"); ?>" id="SO11P065" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P065"); ?>">M65<br>
+											<p>
+												<?php echo Kurang("SO11P065"); ?><br><br><?php waktu("SO11P065"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P080"); ?>" id="SO11P080" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P080"); ?>">M80<br>
+											<p>
+												<?php echo Kurang("SO11P080"); ?><br><br><?php waktu("SO11P080"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P074"); ?>" id="ST11P074" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("ST11P074"); ?>">M74<br>
+											<p>
+												<?php echo Kurang("ST11P074"); ?><br><br><?php waktu("ST11P074"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P075"); ?>" id="ST11P075" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("ST11P075"); ?>">M75<br>
+											<p>
+												<?php echo Kurang("ST11P075"); ?><br><br><?php waktu("ST11P075"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TT11U010"); ?>" id="TT11U010" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TT11U010"); ?>">E10<br>
+											<p>
+												<?php echo Kurang("TT11U010"); ?><br><br><?php waktu("TT11U010"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J019"); ?>" id="DO11J019" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("DO11J019"); ?>">D19<br>
+											<p>
+												<?php echo Kurang("DO11J019"); ?><br><br><?php waktu("DO11J019"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J014" ); ?>" id="DO11J014" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("DO11J014" ); ?>">D14<br>
+											<p>
+												<?php echo Kurang("DO11J014" ); ?><br><br><?php waktu("DO11J014" ); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J009"); ?>" id="DO11J009" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("DO11J009"); ?>">D09<br>
+											<p>
+												<?php echo Kurang("DO11J009"); ?><br><br><?php waktu("DO11J009"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J004"); ?>" id="DO11J004" data-toggle="tooltip" data-html="true" data-placement="left" title="<?php echo Rajut("DO11J004"); ?>">D04<br>
+											<p>
+												<?php echo Kurang("DO11J004"); ?><br><br><?php waktu("DO11J004"); ?>
+											</p>
+										</span></a></td>
+							</tr>
+							<tr>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P017"); ?>" id="ST11P017" data-toggle="tooltip" data-html="true" data-placement="right" title="<?php echo Rajut("ST11P017"); ?>">M17<br>
+											<p>
+												<?php echo Kurang("ST11P017"); ?><br><br><?php waktu("ST11P017"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P020"); ?>" id="ST11P020" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("ST11P020"); ?>">M20<br>
+											<p>
+												<?php echo Kurang("ST11P020"); ?><br><br><?php waktu("ST11P020"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P023"); ?>" id="ST11P023" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("ST11P023"); ?>">M23<br>
+											<p>
+												<?php echo Kurang("ST11P023"); ?><br><br><?php waktu("ST11P023"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("RI11P012"); ?>" id="RI11P012" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("RI11P012"); ?>">R12<br>
+											<p>
+												<?php echo Kurang("RI11P012"); ?><br><br><?php waktu("RI11P012"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("RI11P006"); ?>" id="RI11P006" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("RI11P006"); ?>">R6&nbsp;&nbsp;<br>
+											<p>
+												<?php echo Kurang("RI11P006"); ?><br><br><?php waktu("RI11P006"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U023"); ?>" id="TF11U023" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U023"); ?>">E23<br>
+											<p>
+												<?php echo Kurang("TF11U023"); ?><br><br><?php waktu("TF11U023"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U020"); ?>" id="TF11U020" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U020"); ?>">E20<br>
+											<p>
+												<?php echo Kurang("TF11U020"); ?><br><br><?php waktu("TF11U020"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P031"); ?>" id="ST11P031" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("ST11P031"); ?>">M31<br>
+											<p>
+												<?php echo Kurang("ST11P031"); ?><br><br><?php waktu("ST11P031"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P032"); ?>" id="ST11P032" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("ST11P032"); ?>">M32<br>
+											<p>
+												<?php echo Kurang("ST11P032"); ?><br><br><?php waktu("ST11P032"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U025"); ?>" id="TF11U025" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U025"); ?>">E25<br>
+											<p>
+												<?php echo Kurang("TF11U025"); ?><br><br><?php waktu("TF11U025"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U042"); ?>" id="TF11U042" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U042"); ?>">E42<br>
+											<p>
+												<?php echo Kurang("TF11U042"); ?><br><br><?php waktu("TF11U042"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U048"); ?>" id="TF11U048" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U048"); ?>">E48<br>
+											<p>
+												<?php echo Kurang("TF11U048"); ?><br><br><?php waktu("TF11U048"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U051"); ?>" id="TF11U051" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U051"); ?>">E51<br>
+											<p>
+												<?php echo Kurang("TF11U051"); ?><br><br><?php waktu("TF11U051"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P051"); ?>" id="SO11P051" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P051"); ?>">M51<br>
+											<p>
+												<?php echo Kurang("SO11P051"); ?><br><br><?php waktu("SO11P051"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P046"); ?>" id="SO11P046" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P046"); ?>">M46<br>
+											<p>
+												<?php echo Kurang("SO11P046"); ?><br><br><?php waktu("SO11P046"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P041"); ?>" id="SO11P041" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P041"); ?>">M41<br>
+											<p>
+												<?php echo Kurang("SO11P041"); ?><br><br><?php waktu("SO11P041"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P061"); ?>" id="SO11P061" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P061"); ?>">M61<br>
+											<p>
+												<?php echo Kurang("SO11P061"); ?><br><br><?php waktu("SO11P061"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P066"); ?>" id="SO11P066" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P066"); ?>">M66<br>
+											<p>
+												<?php echo Kurang("SO11P066"); ?><br><br><?php waktu("SO11P066"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P081"); ?>" id="SO11P081" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P081"); ?>">M81<br>
+											<p>
+												<?php echo Kurang("SO11P081"); ?><b><br><br><?php waktu("SO11P081"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P076"); ?>" id="ST11P076" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("ST11P076"); ?>">M76<br>
+											<p>
+												<?php echo Kurang("ST11P076"); ?><br><br><?php waktu("ST11P076"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TT11U004"); ?>" id="TT11U004" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TT11U004"); ?>">E04<br>
+											<p>
+												<?php echo Kurang("TT11U004"); ?><br><br><?php waktu("TT11U004"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TT11U009"); ?>" id="TT11U009" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TT11U009"); ?>">E09<br>
+											<p>
+												<?php echo Kurang("TT11U009"); ?><br><br><?php waktu("TT11U009"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J020"); ?>" id="DO11J020" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("DO11J020"); ?>">D20<br>
+											<p>
+												<?php echo Kurang("DO11J020"); ?><br><br><?php waktu("DO11J020"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J015"); ?>" id="DO11J015" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("DO11J015"); ?>">D15<br>
+											<p>
+												<?php echo Kurang("DO11J015"); ?><br><br><?php waktu("DO11J015"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J010"); ?>" id="DO11J010" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("DO11J010"); ?>">D10<br>
+											<p>
+												<?php echo Kurang("DO11J010"); ?><br><br><?php waktu("DO11J010"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("DO11J005"); ?>" id="DO11J005" data-toggle="tooltip" data-html="true" data-placement="left" title="<?php echo Rajut("DO11J005"); ?>">D05<br>
+											<p>
+												<?php echo Kurang("DO11J005"); ?><br><br><?php waktu("DO11J005"); ?>
+											</p>
+										</span></a></td>
+							</tr>
+							<tr>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("RI11P007"); ?>" id="RI11P007" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("RI11P007"); ?>">R7&nbsp;&nbsp;<br />
+											<p>
+												<?php echo Kurang("RI11P007"); ?><br><br><?php waktu("RI11P007"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U001"); ?>" id="TF11U001" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U001"); ?>">E01<br>
+											<p>
+												<?php echo Kurang("TF11U001"); ?><br><br><?php waktu("TF11U001"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U026"); ?>" id="TF11U026" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U026"); ?>">E26<br>
+											<p>
+												<?php echo Kurang("TF11U026"); ?><br><br><?php waktu("TF11U026"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P026"); ?>" id="ST11P026" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("ST11P026"); ?>">M26<br>
+											<p>
+												<?php echo Kurang("ST11P026"); ?><br><br><?php waktu("ST11P026"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P067"); ?>" id="ST11P067" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("ST11P067"); ?>">M67<br>
+											<p>
+												<?php echo Kurang("ST11P067"); ?><br><br><?php waktu("ST11P067"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U027"); ?>" id="TF11U027" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U027"); ?>">E27<br>
+											<p>
+												<?php echo Kurang("TF11U027"); ?><br><br><?php waktu("TF11U027"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U043"); ?>" id="TF11U043" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U043"); ?>">E43<br>
+											<p>
+												<?php echo Kurang("TF11U043"); ?><br><br><?php waktu("TF11U043"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U049"); ?>" id="TF11U049" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U049"); ?>">E49<br>
+											<p>
+												<?php echo Kurang("TF11U049"); ?><br><br><?php waktu("TF11U049"); ?>
+											</p>
+										</span></a></td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td colspan="3">&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("SO11P082"); ?>" id="SO11P082" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("SO11P082"); ?>">M82<br>
+											<p>
+												<?php echo Kurang("SO11P082"); ?><br><br><?php waktu("SO11P082"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TT11U002"); ?>" id="TT11U002" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TT11U002"); ?>">E02<br>
+											<p>
+												<?php echo Kurang("TT11U002"); ?><br><br><?php waktu("TT11U002"); ?>
+											</p>
+										</span></a></td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+							</tr>
+							<tr>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P018"); ?>" id="ST11P018" data-toggle="tooltip" data-html="true" data-placement="right" title="<?php echo Rajut("ST11P018"); ?>">M18<br>
+											<p>
+												<?php echo Kurang("ST11P018"); ?><br><br><?php waktu("ST11P018"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P021"); ?>" id="ST11P021" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("ST11P021"); ?>">M21<br>
+											<p>
+												<?php echo Kurang("ST11P021"); ?><br><br><?php waktu("ST11P021"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P024"); ?>" id="ST11P024" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("ST11P024"); ?>">M24<br>
+											<p>
+												<?php echo Kurang("ST11P024"); ?><br><br><?php waktu("ST11P024"); ?>
+											</p>
+										</span></a></td>
+								<td>&nbsp;</td>
+								<td><a></td>
+								<td colspan="4">&nbsp;</td>
+								<td>&nbsp;</td>
+								<td colspan="3">&nbsp;</td>
+								<td>&nbsp;</td>
+								<td colspan="3">&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td colspan="3">&nbsp;</td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("RI11S018"); ?>" id="RI11S018" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("RI11S018"); ?>">R18<br />
+								  <p> <?php echo Kurang("RI11S018"); ?><br />
+								    <br />
+								    <?php waktu("RI11S018"); ?>
+							    </p>
+								  </span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("RI11S015"); ?>" id="RI11S015" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("RI11S015"); ?>">R15<br />
+											<p>
+												<?php echo Kurang("RI11S015"); ?><br><br><?php waktu("RI11S015"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U059"); ?>" id="TF11U059" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U059"); ?>">E59<br />
+											<p>
+												<?php echo Kurang("TF11U059"); ?><br><br><?php waktu("TF11U059"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U055"); ?>" id="TF11U055" data-toggle="tooltip" data-html="true" data-placement="left" title="<?php echo Rajut("TF11U055"); ?>">E55<br />
+											<p>
+												<?php echo Kurang("TF11U055"); ?><br><br><?php waktu("TF11U055"); ?>
+											</p>
+										</span></a></td>
+							</tr>
+							<tr>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P019"); ?>" id="ST11P019" data-toggle="tooltip" data-html="true" data-placement="right" title="<?php echo Rajut("ST11P019"); ?>">M19<br>
+											<p>
+												<?php echo Kurang("ST11P019"); ?><br><br><?php waktu("ST11P019"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P022"); ?>" id="ST11P022" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("ST11P022"); ?>">M22<br>
+											<p>
+												<?php echo Kurang("ST11P022"); ?><br><br><?php waktu("ST11P022"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("ST11P025"); ?>" id="ST11P025" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("ST11P025"); ?>">M25<br>
+											<p>
+												<?php echo Kurang("ST11P025"); ?><br><br><?php waktu("ST11P025"); ?>
+											</p>
+										</span></a></td>
+								<td colspan="2" align="right">&nbsp;</td>
+								<td colspan="3" align="right">&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td colspan="3">&nbsp;</td>
+								<td>&nbsp;</td>
+								<td colspan="3">&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td colspan="3">&nbsp;</td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("RI11S017"); ?>" id="RI11S017" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("RI11S017"); ?>">R17<br />
+								  <p> <?php echo Kurang("RI11S017"); ?><br />
+								    <br />
+								    <?php waktu("RI11S017"); ?>
+							    </p>
+								  </span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("RI11S013"); ?>" id="RI11S013" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("RI11S013"); ?>">R13<br />
+											<p>
+												<?php echo Kurang("RI11S013"); ?><br><br><?php waktu("RI11S013"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U058"); ?>" id="TF11U058" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U058"); ?>">E58<br />
+											<p>
+												<?php echo Kurang("TF11U058"); ?><br><br><?php waktu("TF11U058"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U054"); ?>" id="TF11U054" data-toggle="tooltip" data-html="true" data-placement="left" title="<?php echo Rajut("TF11U054"); ?>">E54<br />
+											<p>
+												<?php echo Kurang("TF11U054"); ?><br><br><?php waktu("TF11U054"); ?>
+											</p>
+										</span></a></td>
+							</tr>
+							<tr>
+								<td colspan="2">&nbsp;</td>
+								<td colspan="3">&nbsp;</td>
+								<td colspan="3" align="right">&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td colspan="3">&nbsp;</td>
+								<td>&nbsp;</td>
+								<td colspan="3">&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td colspan="3">&nbsp;</td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("RI11S016"); ?>" id="RI11S016" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("RI11S016"); ?>">R16<br />
+								  <p> <?php echo Kurang("RI11S016"); ?><br />
+								    <br />
+								    <?php waktu("RI11S016"); ?>
+							    </p>
+								  </span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U061"); ?>" id="TF11U061" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U061"); ?>">E61<br />
+											<p>
+												<?php echo Kurang("TF11U061"); ?><br><br><?php waktu("TF11U061"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U057"); ?>" id="TF11U057" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U057"); ?>">E57<br />
+											<p>
+												<?php echo Kurang("TF11U057"); ?><br><br><?php waktu("TF11U057"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U053"); ?>" id="TF11U053" data-toggle="tooltip" data-html="true" data-placement="left" title="<?php echo Rajut("TF11U053"); ?>">E53<br />
+											<p>
+												<?php echo Kurang("TF11U053"); ?><br><br><?php waktu("TF11U053"); ?>
+											</p>
+										</span></a></td>
+							</tr>
+
+							<tr>
+								<td colspan="22" style="padding: 2px;">
+									<marquee class="teks-berjalan" behavior="scroll" direction="left" onmouseover="this.stop();" onmouseout="this.start();">
+										<?php echo $rNews['news_line']; ?>
+									</marquee>
+								</td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("RI11S014"); ?>" id="RI11S014" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("RI11S014"); ?>">R14<br />
+								  <p> <?php echo Kurang("RI11S014"); ?><br />
+								    <br />
+								    <?php waktu("RI11S014"); ?>
+							    </p>
+							  </span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U060"); ?>" id="TF11U060" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U060"); ?>">E60<br />
+											<p>
+												<?php echo Kurang("TF11U060"); ?><br><br><?php waktu("TF11U060"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U056"); ?>" id="TF11U056" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U056"); ?>">E56<br />
+											<p>
+												<?php echo Kurang("TF11U056"); ?><br><br><?php waktu("TF11U056"); ?>
+											</p>
+										</span></a></td>
+								<td><a><span class="detail_status btn <?php echo NoMesin("TF11U052"); ?>" id="TF11U052" data-toggle="tooltip" data-html="true" data-placement="left" title="<?php echo Rajut("TF11U052"); ?>">E52<br />
+											<p>
+												<?php echo Kurang("TF11U052"); ?><br><br><?php waktu("TF11U052"); ?>
+											</p>
+										</span></a></td>
+							</tr>
+							<tr>
+							  <td>&nbsp;</td>
+							  <td>&nbsp;</td>
+							  <td>&nbsp;</td>
+							  <td>&nbsp;</td>
+							  <td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+							</tr>
+
+							<tr>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+							</tr>
+							<tr>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+							</tr>
+							<tr style="height: 0.1in;">
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+							</tr>
+							<tr>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+							</tr>
+							<tr>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+							</tr>
+							<tr style="height: 0.1in;">
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+							</tr>
+							<tr>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+							</tr>
+							<tr>
+								<td colspan="26" style="padding: 5px;">
+									<!--<marquee class="teks-berjalan" behavior="scroll" direction="left" onmouseover="this.stop();" onmouseout="this.start();" >
+        <?php //echo $rNews1[news_line];?>
+      </marquee> -->
+									&nbsp;</td>
+							</tr>
+
+						</table>		
+		
+	</div>
+  </div>	
+</div>		
+			<div id="DetailStatus" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+			</div>
+
+	</body>
+
+	<!-- REQUIRED SCRIPTS -->
+
+<!-- jQuery -->
+<script src="../plugins/jquery/jquery.min.js"></script>
+<!-- Bootstrap 4 -->
+<script src="../plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+<!-- Select2 -->
+<script src="../plugins/select2/js/select2.full.min.js"></script>
+<!-- Bootstrap4 Duallistbox -->
+<script src="../plugins/bootstrap4-duallistbox/jquery.bootstrap-duallistbox.min.js"></script>
+<!-- InputMask -->
+<script src="../plugins/moment/moment.min.js"></script>
+<script src="../plugins/inputmask/jquery.inputmask.min.js"></script>
+<!-- date-range-picker -->
+<script src="../plugins/daterangepicker/daterangepicker.js"></script>
+<!-- bootstrap color picker -->
+<script src="../plugins/bootstrap-colorpicker/js/bootstrap-colorpicker.min.js"></script>
+<!-- Tempusdominus Bootstrap 4 -->
+<script src="../plugins/tempusdominus-bootstrap-4/js/tempusdominus-bootstrap-4.min.js"></script>
+<!-- DataTables  & Plugins -->
+  <script src="../plugins/datatables/jquery.dataTables.min.js"></script>
+  <script src="../plugins/datatables-bs4/js/dataTables.bootstrap4.min.js"></script>
+  <script src="../plugins/datatables-responsive/js/dataTables.responsive.min.js"></script>
+  <script src="../plugins/datatables-responsive/js/responsive.bootstrap4.min.js"></script>
+  <script src="../plugins/datatables-buttons/js/dataTables.buttons.min.js"></script>
+  <script src="../plugins/datatables-buttons/js/buttons.bootstrap4.min.js"></script>
+  <script src="../plugins/jszip/jszip.min.js"></script>
+  <script src="../plugins/pdfmake/pdfmake.min.js"></script>
+  <script src="../plugins/pdfmake/vfs_fonts.js"></script>
+  <script src="../plugins/datatables-buttons/js/buttons.html5.min.js"></script>
+  <script src="../plugins/datatables-buttons/js/buttons.print.min.js"></script>
+  <script src="../plugins/datatables-buttons/js/buttons.colVis.min.js"></script>	
+<!-- Bootstrap Switch -->
+<script src="../plugins/bootstrap-switch/js/bootstrap-switch.min.js"></script>
+<!-- BS-Stepper -->
+<script src="../plugins/bs-stepper/js/bs-stepper.min.js"></script>
+<!-- dropzonejs -->
+<script src="../plugins/dropzone/min/dropzone.min.js"></script>
+<!-- AdminLTE App -->
+<script src="../dist/js/adminlte.min.js"></script>
+	<script>
+		$(document).ready(function() {
+			$('[data-toggle="tooltip"]').tooltip();
+		});
+
+	</script>
+	<!-- Javascript untuk popup modal Edit-->
+	<script type="text/javascript">
+		$(document).on('click', '.detail_status', function(e) {
+    var m = $(this).attr("id");
+    $.ajax({
+      url: "./detail_status.php",
+      type: "GET",
+      data: {
+        id: m,
+      },
+      success: function(ajaxData) {
+        $("#DetailStatus").html(ajaxData);
+        $("#DetailStatus").modal('show', {
+          backdrop: 'true'
+        });
+      }
+    });
+  });
+
+		//            tabel lookup KO status terima
+		$(function() {
+			$("#lookup").dataTable();
+		});
+
+	</script>
+	<script>
+		$(document).ready(function() {
+			"use strict";
+			// toat popup js
+			$.toast({
+				heading: 'Selamat Datang',
+				text: 'Knitting Indo Taichen',
+				position: 'bottom-right',
+				loaderBg: '#ff6849',
+				icon: 'success',
+				hideAfter: 3500,
+				stack: 6
+			})
+
+
+		});
+		$(".tst1").on("click", function() {
+			var msg = $('#message').val();
+			var title = $('#title').val() || '';
+			$.toast({
+				heading: 'Info',
+				text: msg,
+				position: 'top-right',
+				loaderBg: '#ff6849',
+				icon: 'info',
+				hideAfter: 3000,
+				stack: 6
+			});
+
+		});
+
+	</script>
+
+</html>

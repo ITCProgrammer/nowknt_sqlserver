@@ -1,0 +1,17 @@
+RewriteEngine On
+
+RewriteRule ^login$ login.php [L]
+RewriteRule ^lockscreen$ lockscreen.php [L]
+RewriteRule ^logout$ login.php?act=logout [L]
+RewriteRule ^UploadData-$ index.php?p=UploadData [L]
+RewriteRule ^UploadData-([a-zA-Z0-9_-]+)$ index.php?p=UploadData&id=$1 [L]
+RewriteRule ^DelUpload-([a-zA-Z0-9_-]+)$ index.php?p=DelUpload&id=$1 [L]
+RewriteRule ^Pemeriksaan-$ index.php?p=Pemeriksaan [L]
+RewriteRule ^Pemeriksaan-([a-zA-Z0-9_-]+)$ index.php?p=Pemeriksaan&no_mesin=$1 [L]
+RewriteRule ^UbahStatus$ index.php?p=Edit_Status [L]
+RewriteRule ^UbahPeriksa$ index.php?p=Edit_Periksa [L]
+RewriteRule ^DelPeriksa-([0-9_-]+)-([a-zA-Z0-9_-]+)$ index.php?p=DelPeriksa&id=$1&mc=$2 [L]
+RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?p=$1 [L]
+RewriteRule ^([a-zA-Z0-9_-]+)/$ index.php?p=$1 [L]
+
+Options All -Indexes
