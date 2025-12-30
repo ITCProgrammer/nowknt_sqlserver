@@ -1,13 +1,6 @@
 <?php
 date_default_timezone_set('Asia/Jakarta');
 
-//$host="10.0.0.4";
-//$username="timdit";
-//$password="4dm1n";
-//$db_name="TM";
-//$connInfo = array( "Database"=>$db_name, "UID"=>$username, "PWD"=>$password);
-//$conn     = sqlsrv_connect( $host, $connInfo);
-
 $hostname="10.0.0.21";
 $database = "NOWPRD";
 $user = "db2admin";
@@ -22,13 +15,34 @@ else{
     exit("DB2 Connection failed");
     }
 
-//$con=mysqli_connect("10.0.0.10","dit","4dm1n","db_dying");
-//$cond=mysqli_connect("10.0.0.10","dit","4dm1n","db_qc");
-$con=mysqli_connect("10.0.0.10","dit","4dm1n","dbknitt");
-$con_nowprd=mysqli_connect("10.0.0.10","dit","4dm1n","nowprd");
-if (mysqli_connect_errno()) {
-printf("Connect failed: %s\n", mysqli_connect_error());
-exit();
-} 
+// SQL Server connections for dbknitt and nowprd
+$hostSVR19     = "10.0.0.221";
+$usernameSVR19 = "sa";
+$passwordSVR19 = "Ind@taichen2024";
+
+$sqlsrvDbknitt = array(
+    "Database" => "dbknitt",
+    "UID" => $usernameSVR19,
+    "PWD" => $passwordSVR19,
+    "ReturnDatesAsStrings" => true
+);
+
+$sqlsrvNowprd = array(
+    "Database" => "nowprd",
+    "UID" => $usernameSVR19,
+    "PWD" => $passwordSVR19,
+    "ReturnDatesAsStrings" => true
+);
+
+$con = sqlsrv_connect($hostSVR19, $sqlsrvDbknitt);
+$con_nowprd = sqlsrv_connect($hostSVR19, $sqlsrvNowprd);
+
+if ($con === false) {
+    exit("SQL Server connection to dbknitt failed: " . print_r(sqlsrv_errors(), true));
+}
+
+if ($con_nowprd === false) {
+    exit("SQL Server connection to nowprd failed: " . print_r(sqlsrv_errors(), true));
+}
 
 ?>
