@@ -49,7 +49,6 @@
 <?php
 if (isset($_POST['submit'])) {
     require_once 'koneksi.php';
-    mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
     $fileMimes = [
         'text/csv','text/plain','application/csv','text/comma-separated-values',
@@ -76,7 +75,7 @@ if (isset($_POST['submit'])) {
         function is_scientific_like($s) {
             $s = trim((string)$s);
             if ($s === '') return false;
-            return (bool)preg_match('/^[+-]?\d+(?:\.\d+)?e[+-]?\d+$/i', $s);
+            return (bool)preg_match('/^[+-]?\\d+(?:\\.\\d+)?e[+-]?\\d+$/i', $s);
         }
 
         // header map
@@ -108,7 +107,7 @@ if (isset($_POST['submit'])) {
         if (!empty($bad)) {
             fclose($csv);
             // susun pesan baris bermasalah
-            $detail = implode("\\n", array_map(fn($b)=>"Baris {$b['line']} → SN: {$b['sn']}", $bad));
+            $detail = implode("\\n", array_map(fn($b)=>"Baris {$b['line']} -> SN: {$b['sn']}", $bad));
             echo "<script>alert('Upload DITOLAK: Ditemukan nilai SN dalam notasi ilmiah (mis. 8E+12).\\n"
                . "Perbaiki file: formatkan kolom SN sebagai NUMBER di Excel sebelum ekspor CSV.\\n\\nContoh baris bermasalah:\\n{$detail}"
                . (count($bad)===10 ? "\\n... (mungkin masih ada baris lain)":"")
@@ -120,12 +119,23 @@ if (isset($_POST['submit'])) {
         rewind($csv);
         fgetcsv($csv, 100000, ','); // skip header
 
-        $sql = "INSERT INTO tbl_stokfull (tgl_buat, SN, jenis_benang, Cones, KG, zone, lokasi, project, lot, id_upload)
+        $sql = "INSERT INTO dbknitt.tbl_stokfull (tgl_buat, SN, jenis_benang, Cones, KG, zone, lokasi, project, lot, id_upload)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-        $con->begin_transaction();
+        $insertParams = [&$tgl_buat, &$SN, &$jenis_benang, &$Cones, &$KG, &$zone, &$lokasi, &$project, &$lot, &$idUp];
+        $stmt = sqlsrv_prepare($con, $sql, $insertParams);
+        if ($stmt === false) {
+            $err = addslashes(print_r(sqlsrv_errors(), true));
+            fclose($csv);
+            die("<script>alert('Gagal mempersiapkan query: {$err}'); history.back();</script>");
+        }
+
+        if (!sqlsrv_begin_transaction($con)) {
+            $err = addslashes(print_r(sqlsrv_errors(), true));
+            fclose($csv);
+            die("<script>alert('Gagal memulai transaksi: {$err}'); history.back();</script>");
+        }
         try {
-            $stmt = $con->prepare($sql);
             $rowCount = 0;
 
             while (($row = fgetcsv($csv, 200000, ',')) !== false) {
@@ -143,23 +153,25 @@ if (isset($_POST['submit'])) {
                 $project= trim((string)$row[$map['project']]);
                 $lot    = trim((string)$row[$map['lot']]);
 
-                // 9 string + 1 integer (id_upload)
-                $stmt->bind_param("sssssssssi",
-                    $tgl_buat, $SN, $jenis_benang, $Cones, $KG, $zone, $lokasi, $project, $lot, $idUp
-                );
-                $stmt->execute();
+                if (!sqlsrv_execute($stmt)) {
+                    throw new Exception('Gagal insert baris ke-'.($rowCount+2).': '.print_r(sqlsrv_errors(), true));
+                }
                 $rowCount++;
             }
             fclose($csv);
 
-            $u = $con->prepare("UPDATE tbl_upload SET nama_file=?, tgl_upload=NOW() WHERE id=?");
-            $u->bind_param("si", $nameFile, $idUp);
-            $u->execute();
+            $u = sqlsrv_query($con, "UPDATE dbknitt.tbl_upload SET nama_file=?, tgl_upload=GETDATE() WHERE id=?", [$nameFile, $idUp]);
+            if ($u === false) {
+                throw new Exception('Gagal memperbarui header upload: '.print_r(sqlsrv_errors(), true));
+            }
 
-            $con->commit();
+            sqlsrv_commit($con);
             echo "<script>alert('CSV berhasil: {$rowCount} baris diimport'); window.location='DataUpload';</script>";
         } catch (Throwable $e) {
-            $con->rollback(); fclose($csv);
+            sqlsrv_rollback($con);
+            if (is_resource($csv)) {
+                fclose($csv);
+            }
             $msg = addslashes($e->getMessage());
             echo "<script>alert('Gagal import: {$msg}'); history.back();</script>";
         }

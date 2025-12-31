@@ -35,10 +35,17 @@ $Zone		= isset($_POST['zone']) ? $_POST['zone'] : '';
                   <tbody>
 				  <?php
 					$no=1; 
-					$sql=mysqli_query($con,"SELECT * FROM tbl_upload ORDER BY id DESC");					  
-	  				while($rowd=mysqli_fetch_array($sql)){
-						$sql1=mysqli_query($con,"SELECT COUNT(*) AS JML, sum(if(`status`='belum cek',1,0)) as bcek,sum(if(`status`='ok',1,0)) as scek FROM tbl_stokfull WHERE id_upload='$rowd[id]'");					  
-	  					$rowd1=mysqli_fetch_array($sql1);
+					$sql = sqlsrv_query($con, "SELECT * FROM dbknitt.tbl_upload ORDER BY id DESC");
+	  				while($rowd = $sql ? sqlsrv_fetch_array($sql, SQLSRV_FETCH_ASSOC) : null){
+						$sql1 = sqlsrv_query(
+              $con,
+              "SELECT COUNT(*) AS JML,
+                      SUM(CASE WHEN [status]='belum cek' THEN 1 ELSE 0 END) as bcek,
+                      SUM(CASE WHEN [status]='ok' THEN 1 ELSE 0 END) as scek
+               FROM dbknitt.tbl_stokfull WHERE id_upload=?",
+              [$rowd['id']]
+            );
+	  					$rowd1 = $sql1 ? sqlsrv_fetch_array($sql1, SQLSRV_FETCH_ASSOC) : ['JML'=>0,'bcek'=>0,'scek'=>0];
 						if($rowd['status']=="Open" and $rowd1['scek']==0){
 							$stts="<small class='badge badge-success '><i class='far fa-clock'></i> Open</small>";
 						}else if($rowd['status']=="Open" and $rowd1['scek']>0){

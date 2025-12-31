@@ -1,159 +1,192 @@
 <?php
-$Zone		= isset($_POST['zone']) ? $_POST['zone'] : '';
-$Lokasi		= isset($_POST['lokasi']) ? $_POST['lokasi'] : '';
-$Barcode	= substr($_POST['barcode'],-13);
-?>
+$Zone       = isset($_POST['zone']) ? trim($_POST['zone']) : '';
+$Lokasi     = isset($_POST['lokasi']) ? trim($_POST['lokasi']) : '';
+$Barcode    = isset($_POST['barcode']) ? substr($_POST['barcode'], -13) : '';
+$actionCek  = isset($_POST['cek']) ? $_POST['cek'] : '';
+$actionCari = isset($_POST['cari']) ? $_POST['cari'] : '';
+$saveZone   = isset($_POST['simpan_zone']) ? $_POST['simpan_zone'] : '';
+$saveLokasi = isset($_POST['simpan_lokasi']) ? $_POST['simpan_lokasi'] : '';
 
-<?php 
-$sqlDB21Cek = " SELECT WHSLOCATIONWAREHOUSEZONECODE, WAREHOUSELOCATIONCODE, CREATIONDATETIME,BASEPRIMARYQUANTITYUNIT FROM 
+$likeLokasi = $Lokasi !== '' ? $Lokasi.'%' : '%';
+
+// Helper ambil list master dari data stok (karena tabel master tidak ada di SQL Server)
+function getDistinctOptions($con, $field, $zone = null) {
+    if ($field === 'zone') {
+        $stmt = sqlsrv_query($con, "SELECT DISTINCT zone AS nama FROM dbknitt.tbl_stokfull ORDER BY zone");
+    } else {
+        $stmt = sqlsrv_query($con, "SELECT DISTINCT lokasi AS nama FROM dbknitt.tbl_stokfull WHERE zone=? ORDER BY lokasi", [$zone]);
+    }
+    $data = [];
+    if ($stmt) {
+        while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+            $data[] = $row['nama'];
+        }
+    }
+    return $data;
+}
+
+function insertStokLoss($con, $data) {
+    sqlsrv_query(
+        $con,
+        "INSERT INTO dbknitt.tbl_stokloss (lokasi, lokasi_asli, lot, KG, zone, SN, tgl_masuk, id_upload, tgl_cek)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, GETDATE())",
+        [
+            $data['lokasi'],
+            $data['lokasi_asli'],
+            $data['lot'],
+            $data['KG'],
+            $data['zone'],
+            $data['SN'],
+            $data['tgl_masuk'],
+            $data['id_upload']
+        ]
+    );
+}
+
+// Simpan master zone/lokasi (via modal)
+// Tombol tambah dinonaktifkan sementara karena master tbl_zone/tbl_lokasi belum tersedia di SQL Server
+
+// Data dari DB2 (lokasi real)
+$cekZoneNOW   = '';
+$cekLokasiNOW = '';
+$tglMasukNow  = '';
+$kgNowDb2     = null;
+if ($Barcode !== '') {
+    $sqlDB21Cek = " SELECT WHSLOCATIONWAREHOUSEZONECODE, WAREHOUSELOCATIONCODE, CREATIONDATETIME,BASEPRIMARYQUANTITYUNIT FROM 
 	BALANCE b WHERE (b.ITEMTYPECODE='GYR' OR b.ITEMTYPECODE='DYR') AND b.LOGICALWAREHOUSECODE IN ('M904','P501') AND b.ELEMENTSCODE='$Barcode' ";
-$stmt1Cek   = db2_exec($conn1,$sqlDB21Cek, array('cursor'=>DB2_SCROLLABLE));
-$rowdb21Cek = db2_fetch_assoc($stmt1Cek);
-$cekZoneNOW = trim($rowdb21Cek['WHSLOCATIONWAREHOUSEZONECODE']);
-$cekLokasiNOW = trim($rowdb21Cek['WAREHOUSELOCATIONCODE']);
-$sqlCek0U=mysqli_query($con,"SELECT COUNT(*) as jml, id_upload FROM tbl_stokfull WHERE zone='$Zone' AND lokasi LIKE '$Lokasi%'");
-$ck0U=mysqli_fetch_array($sqlCek0U);
-$sqlCek0=mysqli_query($con,"SELECT * FROM tbl_stokfull WHERE zone='$Zone' AND lokasi LIKE '$Lokasi%' AND SN='$Barcode'");
-$ck0=mysqli_fetch_array($sqlCek0);
-$sqlCek1=mysqli_query($con,"SELECT COUNT(*) as jml FROM	tbl_stokfull WHERE status='ok' and zone='$Zone' AND lokasi LIKE '$Lokasi%'");
-$ck1=mysqli_fetch_array($sqlCek1);
-$sqlCek2=mysqli_query($con,"SELECT COUNT(*) as jml FROM	tbl_stokfull WHERE status='belum cek' and zone='$Zone' AND lokasi LIKE '$Lokasi%'");
-$ck2=mysqli_fetch_array($sqlCek2);
-
-if($_POST['cek']=="Cek" or $_POST['cari']=="Cari"){	
-	$sqlCek=mysqli_query($con,"SELECT COUNT(*) as jml, zone, lokasi, cones, kg, lot, id_upload FROM tbl_stokfull WHERE SN='$Barcode'");
-	$ck=mysqli_fetch_array($sqlCek);
-	if($Zone=="" and $Lokasi==""){
-		echo"<script>alert('Zone atau Lokasi belum dipilih');</script>";
-	}else if(is_numeric(trim($Barcode))== true and $Barcode!="" and strlen($Barcode)==13 and (substr($Barcode,0,2)=="15" or substr($Barcode,0,2)=="16" or
-														substr($Barcode,0,2)=="17" or substr($Barcode,0,2)=="18" or
-														substr($Barcode,0,2)=="19" or substr($Barcode,0,2)=="20" or
-														substr($Barcode,0,2)=="21" or substr($Barcode,0,2)=="22" or 
-														substr($Barcode,0,2)=="23") ){
-		echo"<script>alert('SN Legacy');</script>";
-	}else if($Barcode!="" and strlen($Barcode)==13 and ($cekZoneNOW!=$Zone or $cekLokasiNOW!=$Lokasi) and $ck0U['id_upload']>0){
-		
-		$LokasiAsl=$ck['zone']."-".$ck['lokasi'];
-		$sqlDataE=mysqli_query($con,"INSERT INTO tbl_stokloss SET 
-		  lokasi='$Lokasi',
-		  lokasi_asli='$LokasiAsl',
-		  lot='$ck[lot]',
-		  KG='$ck[kg]',
-		  zone='$Zone',
-		  SN='$Barcode',
-		  tgl_masuk='$tglMasuk',
-		  id_upload='$ck0U[id_upload]',
-		  tgl_cek=now()");
-		
-		echo "<script>alert('Zone atau Lokasi Berbeda, NOW ($cekZoneNOW-$cekLokasiNOW)');</script>";
-		
-		
-		
-	}else if($Barcode!="" and strlen($Barcode)==13 and ($ck['zone']!=$Zone or $ck['lokasi']!=$Lokasi) and $ck0U['id_upload']>0 ){	
-		$LokasiAsl=$ck['zone']."-".$ck['lokasi'];
-		$sqlDataE=mysqli_query($con,"INSERT INTO tbl_stokloss SET 
-		  lokasi='$Lokasi',
-		  lokasi_asli='$LokasiAsl',
-		  lot='$ck[lot]',
-		  KG='$ck[kg]',
-		  zone='$Zone',
-		  SN='$Barcode',
-		  tgl_masuk='$tglMasuk',
-		  id_upload='$ck0U[id_upload]',
-		  tgl_cek=now()");
-		
-		echo "<script>alert('SN lokasi Tidak sama dengan yg diupload ($LokasiAsl)');</script>";
-		
-	}else if($Barcode!="" and strlen($Barcode)==13 and (substr($Barcode,0,2)=="00" or substr($Barcode,0,3)=="000" or
-														substr($Barcode,0,2)=="70" or substr($Barcode,0,2)=="80" or 
-														substr($Barcode,0,2)=="90") and $ck['zone']==$Zone and $ck['lokasi']==$Lokasi ){
-if($ck0['status']=="ok"){
-	echo"<script>alert('SN Ok dan sudah pernah discan');</script>";
+    $stmt1Cek   = db2_exec($conn1,$sqlDB21Cek, array('cursor'=>DB2_SCROLLABLE));
+    $rowdb21Cek = $stmt1Cek ? db2_fetch_assoc($stmt1Cek) : [];
+    $cekZoneNOW = trim($rowdb21Cek['WHSLOCATIONWAREHOUSEZONECODE']);
+    $cekLokasiNOW = trim($rowdb21Cek['WAREHOUSELOCATIONCODE']);
+    $tglMasukNow = substr($rowdb21Cek['CREATIONDATETIME'],0,10);
+    $kgNowDb2 = isset($rowdb21Cek['BASEPRIMARYQUANTITYUNIT']) ? round($rowdb21Cek['BASEPRIMARYQUANTITYUNIT'],2) : null;
 }
-else if($ck['jml']>0){	
-	$sqlData=mysqli_query($con,"UPDATE tbl_stokfull SET 
+
+// Data upload aktif untuk zona/lokasi yang dipilih
+$ck0U = ['jml'=>0, 'id_upload'=>null];
+$stmtCk0U = sqlsrv_query($con, "SELECT COUNT(*) AS jml, MAX(id_upload) AS id_upload FROM dbknitt.tbl_stokfull WHERE zone=? AND lokasi LIKE ?", [$Zone, $likeLokasi]);
+if ($stmtCk0U) {
+    $ck0U = sqlsrv_fetch_array($stmtCk0U, SQLSRV_FETCH_ASSOC) ?: $ck0U;
+}
+
+// Data SN di lokasi yang dipilih
+$ck0 = [];
+$stmtCk0 = sqlsrv_query($con, "SELECT TOP 1 * FROM dbknitt.tbl_stokfull WHERE zone=? AND lokasi LIKE ? AND SN=?", [$Zone, $likeLokasi, $Barcode]);
+if ($stmtCk0) {
+    $ck0 = sqlsrv_fetch_array($stmtCk0, SQLSRV_FETCH_ASSOC) ?: [];
+}
+
+// Proses scan/check
+if ($actionCek === "Cek" || $actionCari === "Cari") {
+    $ck = ['jml'=>0];
+    if ($Barcode !== '') {
+        $stmtCnt = sqlsrv_query($con, "SELECT COUNT(*) AS jml FROM dbknitt.tbl_stokfull WHERE SN=?", [$Barcode]);
+        if ($stmtCnt) {
+            $rowCnt = sqlsrv_fetch_array($stmtCnt, SQLSRV_FETCH_ASSOC);
+            $ck['jml'] = (int)($rowCnt['jml'] ?? 0);
+        }
+        $stmtDet = sqlsrv_query($con, "SELECT TOP 1 zone, lokasi, cones, KG, lot, id_upload, status FROM dbknitt.tbl_stokfull WHERE SN=?", [$Barcode]);
+        if ($stmtDet) {
+            $detail = sqlsrv_fetch_array($stmtDet, SQLSRV_FETCH_ASSOC);
+            if ($detail) {
+                $ck = array_merge($ck, $detail);
+            }
+        }
+    }
+
+    if ($Zone === "" && $Lokasi === "") {
+        echo"<script>alert('Zone atau Lokasi belum dipilih');</script>";
+    } elseif (is_numeric(trim($Barcode)) === true && $Barcode!="" && strlen($Barcode)==13 && (substr($Barcode,0,2)=="15" || substr($Barcode,0,2)=="16" ||
+                                                        substr($Barcode,0,2)=="17" || substr($Barcode,0,2)=="18" ||
+                                                        substr($Barcode,0,2)=="19" || substr($Barcode,0,2)=="20" ||
+                                                        substr($Barcode,0,2)=="21" || substr($Barcode,0,2)=="22" || 
+                                                        substr($Barcode,0,2)=="23") ){
+        echo"<script>alert('SN Legacy');</script>";
+    } elseif ($Barcode!="" && strlen($Barcode)==13 && ($cekZoneNOW!=='' && ($cekZoneNOW!=$Zone || $cekLokasiNOW!=$Lokasi)) && !empty($ck0U['id_upload'])){
+        $LokasiAsl = ($ck['zone'] ?? '')."-".($ck['lokasi'] ?? '');
+        insertStokLoss($con, [
+          'lokasi' => $Lokasi,
+          'lokasi_asli' => $LokasiAsl,
+          'lot' => $ck['lot'] ?? '',
+          'KG' => $ck['kg'] ?? 0,
+          'zone' => $Zone,
+          'SN' => $Barcode,
+          'tgl_masuk' => $tglMasukNow,
+          'id_upload' => $ck0U['id_upload']
+        ]);
+        echo "<script>alert('Zone atau Lokasi Berbeda, NOW ($cekZoneNOW-$cekLokasiNOW)');</script>";
+    } elseif ($Barcode!="" && strlen($Barcode)==13 && (($ck['zone'] ?? '')!=$Zone || ($ck['lokasi'] ?? '')!=$Lokasi) && !empty($ck0U['id_upload']) ){	
+        $LokasiAsl = ($ck['zone'] ?? '')."-".($ck['lokasi'] ?? '');
+        insertStokLoss($con, [
+          'lokasi' => $Lokasi,
+          'lokasi_asli' => $LokasiAsl,
+          'lot' => $ck['lot'] ?? '',
+          'KG' => $ck['kg'] ?? 0,
+          'zone' => $Zone,
+          'SN' => $Barcode,
+          'tgl_masuk' => $tglMasukNow,
+          'id_upload' => $ck0U['id_upload']
+        ]);
+        echo "<script>alert('SN lokasi Tidak sama dengan yg diupload ($LokasiAsl)');</script>";
+    } elseif ($Barcode!="" && strlen($Barcode)==13 && (substr($Barcode,0,2)=="00" || substr($Barcode,0,3)=="000" ||
+                                                        substr($Barcode,0,2)=="70" || substr($Barcode,0,2)=="80" || 
+                                                        substr($Barcode,0,2)=="90") && ($ck['zone'] ?? '')==$Zone && ($ck['lokasi'] ?? '')==$Lokasi ){
+        if (($ck0['status'] ?? '')=="ok"){
+            echo"<script>alert('SN Ok dan sudah pernah discan');</script>";
+        } elseif ($ck['jml']>0){	
+            sqlsrv_query($con,"UPDATE dbknitt.tbl_stokfull SET 
 		  status='ok',
-		  tgl_cek=now()
-		  WHERE zone='$Zone' AND lokasi LIKE '$Lokasi%' AND SN='$Barcode'");
-	$sqlCek1=mysqli_query($con,"SELECT COUNT(*) as jml FROM	tbl_stokfull WHERE status='ok' and zone='$Zone' AND lokasi='$Lokasi'");
-	$ck1=mysqli_fetch_array($sqlCek1);
-	$sqlCek2=mysqli_query($con,"SELECT COUNT(*) as jml FROM	tbl_stokfull WHERE status='belum cek' and zone='$Zone' AND lokasi='$Lokasi'");
-	$ck2=mysqli_fetch_array($sqlCek2);		
-}else{
-	$sqlDB21 = " SELECT WHSLOCATIONWAREHOUSEZONECODE, WAREHOUSELOCATIONCODE, CREATIONDATETIME,BASEPRIMARYQUANTITYUNIT FROM 
+		  tgl_cek=GETDATE()
+		  WHERE zone=? AND lokasi LIKE ? AND SN=?", [$Zone, $likeLokasi, $Barcode]);
+        } else {
+            $sqlDB21 = " SELECT WHSLOCATIONWAREHOUSEZONECODE, WAREHOUSELOCATIONCODE, CREATIONDATETIME,BASEPRIMARYQUANTITYUNIT FROM 
 	BALANCE b WHERE (b.ITEMTYPECODE='GYR' OR b.ITEMTYPECODE='DYR') AND b.LOGICALWAREHOUSECODE IN ('M904','P501') AND b.ELEMENTSCODE='$Barcode' ";
-	$stmt1   = db2_exec($conn1,$sqlDB21, array('cursor'=>DB2_SCROLLABLE));
-	$rowdb21 = db2_fetch_assoc($stmt1);
-	$lokasiAsli=trim($rowdb21['WHSLOCATIONWAREHOUSEZONECODE'])."-".trim($rowdb21['WAREHOUSELOCATIONCODE']);
-	$tglMasuk=substr($rowdb21['CREATIONDATETIME'],0,10);
-	$KGnow=round($rowdb21['BASEPRIMARYQUANTITYUNIT'],2);	
-	if($lokasiAsli!="-"){
-		echo"<script>alert('Data Dus ini dilokasi $lokasiAsli');</script>";
-		if( $Zone!="" and $Lokasi!=""){				  
-			$Where= " AND sf.`zone`='$Zone' AND sf.`lokasi`='$Lokasi' " ; 
-		}else{
-			$Where= " AND sf.`zone`='$Zone' AND sf.`lokasi`='$Lokasi' " ;
-		}
-		$sql=mysqli_query($con," SELECT sf.* FROM tbl_stokfull sf
-		LEFT JOIN tbl_upload tu ON tu.id=sf.id_upload  
-		WHERE tu.status='Open' $Where ");
-		$rowd=mysqli_fetch_array($sql);
-		
-	}else{
-		echo"<script>alert('SN tidak OK');</script>";
-		if( $Zone!="" and $Lokasi!=""){				  
-			$Where= " AND sf.`zone`='$Zone' AND sf.`lokasi`='$Lokasi' " ; 
-		}else{
-			$Where= " AND sf.`zone`='$Zone' AND sf.`lokasi`='$Lokasi' " ;
-		}
-		$sql=mysqli_query($con," SELECT sf.* FROM tbl_stokfull sf
-		LEFT JOIN tbl_upload tu ON tu.id=sf.id_upload  
-		WHERE tu.status='Open' $Where ");
-		$rowd=mysqli_fetch_array($sql);
-		if($ck0U['id_upload']>0){
-		$sqlDataE=mysqli_query($con,"INSERT INTO tbl_stokloss SET 
-		  lokasi='$Lokasi',
-		  lokasi_asli='$lokasiAsli',
-		  KG='$KGnow',
-		  zone='$Zone',
-		  SN='$Barcode',
-		  tgl_masuk='$tglMasuk',
-		  id_upload='$ck0U[id_upload]',
-		  tgl_cek=now()");
-		}
-	}
-	$sqlCek1=mysqli_query($con,"SELECT COUNT(*) as jml, sf.id_upload FROM tbl_stokfull sf
-	LEFT JOIN tbl_upload tu ON tu.id=sf.id_upload  
-	WHERE tu.status='Open' AND SN='$Barcode'");
-	$ck1=mysqli_fetch_array($sqlCek1);		
-	if($ck1['jml']>0){	
-	
-	$sqlData1=mysqli_query($con,"UPDATE tbl_stokfull SET 
+            $stmt1   = db2_exec($conn1,$sqlDB21, array('cursor'=>DB2_SCROLLABLE));
+            $rowdb21 = $stmt1 ? db2_fetch_assoc($stmt1) : [];
+            $lokasiAsli=trim($rowdb21['WHSLOCATIONWAREHOUSEZONECODE'])."-".trim($rowdb21['WAREHOUSELOCATIONCODE']);
+            $tglMasuk=substr($rowdb21['CREATIONDATETIME'],0,10);
+            $KGnow=isset($rowdb21['BASEPRIMARYQUANTITYUNIT']) ? round($rowdb21['BASEPRIMARYQUANTITYUNIT'],2) : 0;	
+            if($lokasiAsli!="-"){
+                echo"<script>alert('Data Dus ini dilokasi $lokasiAsli');</script>";
+            }else{
+                echo"<script>alert('SN tidak OK');</script>";
+            }
+            if(!empty($ck0U['id_upload'])){
+                insertStokLoss($con, [
+                  'lokasi' => $Lokasi,
+                  'lokasi_asli' => $lokasiAsli,
+                  'KG' => $KGnow,
+                  'lot' => '',
+                  'zone' => $Zone,
+                  'SN' => $Barcode,
+                  'tgl_masuk' => $tglMasuk,
+                  'id_upload' => $ck0U['id_upload']
+                ]);
+            }
+            $stmtCkOpen = sqlsrv_query($con,"SELECT COUNT(*) AS jml, sf.id_upload FROM dbknitt.tbl_stokfull sf
+	LEFT JOIN dbknitt.tbl_upload tu ON tu.id=sf.id_upload  
+	WHERE tu.status='Open' AND SN=? GROUP BY sf.id_upload", [$Barcode]);
+            $ck1 = $stmtCkOpen ? sqlsrv_fetch_array($stmtCkOpen, SQLSRV_FETCH_ASSOC) : ['jml'=>0,'id_upload'=>null];		
+            if(($ck1['jml'] ?? 0)>0){	
+                sqlsrv_query($con,"UPDATE dbknitt.tbl_stokfull SET 
 		  status='ok',
-		  zone='$Zone',
-		  lokasi='$Lokasi',
-		  tgl_cek=now()
-		  WHERE id_upload='$ck1[id_upload]' AND SN='$Barcode'");	
-	}
+		  zone=?,
+		  lokasi=?,
+		  tgl_cek=GETDATE()
+		  WHERE id_upload=? AND SN=?", [$Zone, $Lokasi, $ck1['id_upload'], $Barcode]);	
+            }
+        }
+    } elseif ($Barcode===""){
+        // barcode kosong
+    } else {
+        echo"<script>alert('SN tidak ditemukan Atau SN Legacy');</script>";
+    }
 }
-	
-	} else if($Barcode==""){
-		//barcode masih kosong
-	}
-	else{
-		echo"<script>alert('SN tidak ditemukan Atau SN Legacy');</script>";
-//		$sqlDataE=mysqli_query($con,"INSERT INTO tbl_stokloss SET 
-//		  lokasi='$Lokasi',
-//		  lokasi_asli='$LokasiAsl',
-//		  KG='$KGnow',
-//		  zone='$Zone',
-//		  SN='$Barcode',
-//		  tgl_masuk='$tglMasuk',
-//		  id_upload='$ck[id_upload]',
-//		  tgl_cek=now()");
-	}
 
-}
+$stmtCk1 = sqlsrv_query($con,"SELECT COUNT(*) as jml FROM	dbknitt.tbl_stokfull WHERE status='ok' and zone=? AND lokasi LIKE ?", [$Zone, $likeLokasi]);
+$ck1 = $stmtCk1 ? sqlsrv_fetch_array($stmtCk1, SQLSRV_FETCH_ASSOC) : ['jml'=>0];
+$stmtCk2 = sqlsrv_query($con,"SELECT COUNT(*) as jml FROM	dbknitt.tbl_stokfull WHERE status='belum cek' and zone=? AND lokasi LIKE ?", [$Zone, $likeLokasi]);
+$ck2 = $stmtCk2 ? sqlsrv_fetch_array($stmtCk2, SQLSRV_FETCH_ASSOC) : ['jml'=>0];
 ?>
 <!-- Main content -->
       <div class="container-fluid">
@@ -180,14 +213,13 @@ else if($ck['jml']>0){
 				 <div class="input-group input-group-sm">
                  <select class="form-control select2bs4" style="width: 80%;" name="zone">
 				   <option value="">Pilih</option>	 
-					<?php $sqlZ=mysqli_query($con," SELECT * FROM tbl_zone order by nama ASC"); 
-					  while($rZ=mysqli_fetch_array($sqlZ)){
+					<?php foreach (getDistinctOptions($con, 'zone') as $namaZone){ 
 					 ?>
-                    <option value="<?php echo $rZ['nama'];?>" <?php if($rZ['nama']==$Zone){ echo "SELECTED"; }?>><?php echo $rZ['nama'];?></option>
+                    <option value="<?php echo $namaZone;?>" <?php if($namaZone==$Zone){ echo "SELECTED"; }?>><?php echo $namaZone;?></option>
                     <?php  } ?>
                   </select>	
 				 <span class="input-group-append">
-                   	  <button type="button" class="btn btn-warning btn-flat" data-toggle="modal" data-target="#DataZone"><i class="fa fa-plus"></i> </button>
+                   	  <button type="button" class="btn btn-warning btn-flat" title="Tambah master zone belum tersedia" disabled><i class="fa fa-plus"></i> </button>
                		  </span>
                 	</div>	 
             </div>
@@ -196,14 +228,13 @@ else if($ck['jml']>0){
 					<div class="input-group input-group-sm"> 
 					<select class="form-control select2bs4" style="width: 80%;" name="lokasi">
                     <option value="">Pilih</option>	 
-					<?php $sqlL=mysqli_query($con," SELECT * FROM tbl_lokasi WHERE zone='$Zone' order by nama ASC"); 
-					  while($rL=mysqli_fetch_array($sqlL)){
+					<?php foreach (getDistinctOptions($con, 'lokasi', $Zone) as $namaLok){ 
 					 ?>
-                    <option value="<?php echo $rL['nama'];?>" <?php if($rL['nama']==$Lokasi){ echo "SELECTED"; }?>><?php echo $rL['nama'];?></option>
+                    <option value="<?php echo $namaLok;?>" <?php if($namaLok==$Lokasi){ echo "SELECTED"; }?>><?php echo $namaLok;?></option>
                     <?php  } ?>
                   </select>	
 				  <span class="input-group-append">
-                   	  <button type="button" class="btn btn-warning btn-flat" data-toggle="modal" data-target="#DataLokasi"><i class="fa fa-plus"></i> </button>
+                   	  <button type="button" class="btn btn-warning btn-flat" title="Tambah master lokasi belum tersedia" disabled><i class="fa fa-plus"></i> </button>
                		  </span>
                 	</div> 		
                   </div> 
@@ -257,25 +288,14 @@ else if($ck['jml']>0){
                   </thead>
                   <tbody>
 				  <?php
-	if( $Zone!="" and $Lokasi!=""){				  
-	$Where= " Where `zone`='$Zone' AND `lokasi` LIKE '$Lokasi%' " ;
-	}else{
-		$Where= " Where `zone`='$Zone' AND `lokasi`LIKE '$Lokasi%' " ;
-	}
-	if($Shift!=""){
-		$Shft=" AND a.shft='$Shift' ";
-	}else{
-		$Shft=" ";
-	}				  
-		$sql=mysqli_query($con," SELECT * FROM tbl_stokfull $Where ");
-   $no=1;   
-   $c=0;
-    while($rowd=mysqli_fetch_array($sql)){
-$sqlDB22 = " SELECT WHSLOCATIONWAREHOUSEZONECODE, WAREHOUSELOCATIONCODE, LOTCODE FROM 
+	if( $Zone!="" || $Lokasi!=""){				  
+	    $sql=sqlsrv_query($con," SELECT * FROM dbknitt.tbl_stokfull WHERE zone=? AND lokasi LIKE ?", [$Zone, $likeLokasi]);
+        while($rowd = $sql ? sqlsrv_fetch_array($sql, SQLSRV_FETCH_ASSOC) : null){
+            $sqlDB22 = " SELECT WHSLOCATIONWAREHOUSEZONECODE, WAREHOUSELOCATIONCODE, LOTCODE FROM 
 	BALANCE b WHERE (b.ITEMTYPECODE='GYR' or b.ITEMTYPECODE='DYR') AND b.ELEMENTSCODE='$rowd[SN]' ";
-	$stmt2   = db2_exec($conn1,$sqlDB22, array('cursor'=>DB2_SCROLLABLE));
-	$rowdb22 = db2_fetch_assoc($stmt2);
-	$lokasiBalance=trim($rowdb22['WHSLOCATIONWAREHOUSEZONECODE'])."-".trim($rowdb22['WAREHOUSELOCATIONCODE']);
+	        $stmt2   = db2_exec($conn1,$sqlDB22, array('cursor'=>DB2_SCROLLABLE));
+	        $rowdb22 = $stmt2 ? db2_fetch_assoc($stmt2) : [];
+	        $lokasiBalance=trim($rowdb22['WHSLOCATIONWAREHOUSEZONECODE'])."-".trim($rowdb22['WAREHOUSELOCATIONCODE']);
 	   ?>
 	  <tr>
       <td style="text-align: center"><?php echo $rowd['SN']; ?></td>
@@ -289,8 +309,9 @@ $sqlDB22 = " SELECT WHSLOCATIONWAREHOUSEZONECODE, WAREHOUSELOCATIONCODE, LOTCODE
       <td style="text-align: center"><small class='badge <?php if($lokasiBalance!="-"){ echo"badge-success";}else if($lokasiBalance=="-"){ echo"badge-danger";}?>'> <?php if($lokasiBalance!="-"){ echo "masih ada"; }else if($lokasiBalance=="-"){ echo "sudah keluar"; } ?></small></td>
       </tr>				  
 					  <?php 
-	 
-	 $no++;} ?>
+	 } 
+    }
+    ?>
 				  </tbody>
                   
                 </table>
@@ -318,16 +339,9 @@ $sqlDB22 = " SELECT WHSLOCATIONWAREHOUSEZONECODE, WAREHOUSELOCATIONCODE, LOTCODE
                   </thead>
                   <tbody>
 				  <?php
-	if( $Zone!="" and $Lokasi!=""){				  
-	$Where= " Where `zone`='$Zone' AND `lokasi` LIKE '$Lokasi%' " ;
-	}else{
-		$Where= " Where `zone`='$Zone' AND `lokasi` LIKE '$Lokasi%' " ;
-	}
-					  
-		$sql1=mysqli_query($con," SELECT *, count(SN) as jmlscn FROM tbl_stokloss $Where  group by SN");
-   $no=1;   
-   $c=0;
-    while($rowd1=mysqli_fetch_array($sql1)){
+	if( $Zone!="" || $Lokasi!=""){				  
+		$sql1=sqlsrv_query($con," SELECT SN, MAX(KG) AS KG, MAX(zone) AS zone, MAX(lokasi) AS lokasi, MAX(lokasi_asli) AS lokasi_asli, MAX(tgl_masuk) AS tgl_masuk, MAX(status) AS status, COUNT(*) as jmlscn FROM dbknitt.tbl_stokloss WHERE zone=? AND lokasi LIKE ?  group by SN", [$Zone, $likeLokasi]);
+        while($rowd1 = $sql1 ? sqlsrv_fetch_array($sql1, SQLSRV_FETCH_ASSOC) : null){
 	if(strlen($rowd1['SN'])!="13"){	
 	$ketSN= "jumlah Karakter di SN tidak Sesuai";}else{$ketSN= "";}
 	if($rowd1['jmlscn']>1){
@@ -340,7 +354,7 @@ $sqlDB22 = " SELECT WHSLOCATIONWAREHOUSEZONECODE, WAREHOUSELOCATIONCODE, LOTCODE
 	$sqlDB22 = " SELECT WHSLOCATIONWAREHOUSEZONECODE, WAREHOUSELOCATIONCODE, LOTCODE FROM 
 	BALANCE b WHERE (b.ITEMTYPECODE='GYR' or b.ITEMTYPECODE='DYR') AND b.ELEMENTSCODE='$rowd1[SN]' ";
 	$stmt2   = db2_exec($conn1,$sqlDB22, array('cursor'=>DB2_SCROLLABLE));
-	$rowdb22 = db2_fetch_assoc($stmt2);
+	$rowdb22 = $stmt2 ? db2_fetch_assoc($stmt2) : [];
 	$lokasiBalance=trim($rowdb22['WHSLOCATIONWAREHOUSEZONECODE'])."-".trim($rowdb22['WAREHOUSELOCATIONCODE']);	
 	   ?>
 	  <tr>
@@ -354,8 +368,9 @@ $sqlDB22 = " SELECT WHSLOCATIONWAREHOUSEZONECODE, WAREHOUSELOCATIONCODE, LOTCODE
       <td style="text-align: center"><small class='badge <?php if($rowd1['status']=="tidak ok"){ echo"badge-warning";}?>' ><i class='fas fa-exclamation-triangle text-default blink_me'></i> <?php echo $rowd1['status']; ?></small> <?php echo $ketSN.", ".$ketSCN; ?> </td>
       </tr>				  
 					  <?php 
-	 
-	 $no++;} ?>
+	 } 
+    }
+    ?>
 				  </tbody>
                   
                 </table>
@@ -412,8 +427,8 @@ $sqlDB22 = " SELECT WHSLOCATIONWAREHOUSEZONECODE, WAREHOUSELOCATIONCODE, LOTCODE
                   <div class="col-md-12">                 
 			      <select class="form-control select2bs4" name="zone2" required>
 				   <option value="">Pilih</option>	 
-					<?php $sqlZ=mysqli_query($con," SELECT * FROM tbl_zone order by nama ASC"); 
-					  while($rZ=mysqli_fetch_array($sqlZ)){
+					<?php $sqlZ=sqlsrv_query($con," SELECT * FROM tbl_zone order by nama ASC"); 
+					  while($rZ= $sqlZ ? sqlsrv_fetch_array($sqlZ, SQLSRV_FETCH_ASSOC) : null){
 					 ?>
                     <option value="<?php echo $rZ['nama'];?>"><?php echo $rZ['nama'];?></option>
                     <?php  } ?>
@@ -439,28 +454,6 @@ $sqlDB22 = " SELECT WHSLOCATIONWAREHOUSEZONECODE, WAREHOUSELOCATIONCODE, LOTCODE
             </div>
             <!-- /.modal-content -->
   </div>
-<?php 
-if($_POST['simpan_zone']=="Save changes"){
-	$zone1=mysqli_real_escape_string($con,strtoupper($_POST['zone1']));
-	$sqlData1=mysqli_query($con,"INSERT INTO tbl_zone SET 
-		  nama='$zone1'");
-	if($sqlData1){	
-		echo "<script>window.location='CheckStock';</script>";
-	
-		}
-}
-if($_POST['simpan_lokasi']=="Save changes"){
-	$zone2=mysqli_real_escape_string($con,strtoupper($_POST['zone2']));
-	$lokasi2=mysqli_real_escape_string($con,strtoupper($_POST['lokasi1']));
-	$sqlData1=mysqli_query($con,"INSERT INTO tbl_lokasi SET 
-		  nama='$lokasi2',
-		  zone='$zone2'");
-	if($sqlData1){	
-		echo "<script>window.location='CheckStock';</script>";
-	
-		}
-}
-?>
 <script>
 	$(function () {
 		//Datepicker

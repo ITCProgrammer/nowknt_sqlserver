@@ -1,8 +1,9 @@
 <?php
-$idUp = $_GET['id'];
-mysqli_query($con, "DELETE FROM tbl_stokfull WHERE id_upload='$idUp'");
-mysqli_query($con, "DELETE FROM tbl_stokloss WHERE id_upload='$idUp'");
-mysqli_query($con, "DELETE FROM tbl_upload WHERE id='$idUp'");
+$idUp = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+
+sqlsrv_query($con, "DELETE FROM dbknitt.tbl_stokfull WHERE id_upload = ?", [$idUp]);
+sqlsrv_query($con, "DELETE FROM dbknitt.tbl_stokloss WHERE id_upload = ?", [$idUp]);
+sqlsrv_query($con, "DELETE FROM dbknitt.tbl_upload WHERE id = ?", [$idUp]);
 
 echo "<script type=\"text/javascript\">
             window.location = \"DataUpload\"

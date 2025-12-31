@@ -2,9 +2,14 @@
 ini_set("error_reporting", 1);
 session_start();
 include("../koneksi.php");
-    $modal_id=$_GET['id'];
-	
-	
+$modal_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+
+$currentStatus = '';
+$sqlZ = sqlsrv_query($con, "SELECT [status] FROM dbknitt.tbl_upload WHERE id = ?", [$modal_id]);
+if ($sqlZ !== false) {
+    $rZ = sqlsrv_fetch_array($sqlZ, SQLSRV_FETCH_ASSOC);
+    $currentStatus = $rZ['status'] ?? '';
+}
 ?>
         <div class="modal-dialog modal-sm">
           <div class="modal-content">
@@ -21,12 +26,8 @@ include("../koneksi.php");
                <label for="sts" class="col-md-1">Status</label>               
                  <select class="form-control select2bs4" style="width: 100%;" name="sts">
 				   <option value="">Pilih</option>	 
-					<?php 
-					  $sqlZ=mysqli_query($con," SELECT * FROM tbl_upload WHERE id='$modal_id'"); 
-					  $rZ=mysqli_fetch_array($sqlZ);
-					 ?>
-                    <option value="Open" <?php if($rZ['status']=="Open"){ echo "SELECTED"; }?>>Open</option>
-					<option value="Closed" <?php if($rZ['status']=="Closed"){ echo "SELECTED"; }?>>Closed</option>  
+                    <option value="Open" <?php if($currentStatus=="Open"){ echo "SELECTED"; }?>>Open</option>
+					<option value="Closed" <?php if($currentStatus=="Closed"){ echo "SELECTED"; }?>>Closed</option>  
                   </select>			   
             </div>   	
             </div>
