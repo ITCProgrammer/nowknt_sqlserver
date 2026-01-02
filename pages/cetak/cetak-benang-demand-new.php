@@ -167,26 +167,29 @@ ORDER BY PROGRESSSTATUS ASC
                         $stsgabung = "";
                     }
 
+                    $rowd = ['berat_awal' => 0];
+                    $rowd1 = ['berat_awal' => 0];
+                    $rowd2 = ['berat_awal' => 0];
                     if($stsgabung!=""){
-	 $sql=mysqli_query($con," SELECT sum(berat_awal) as berat_awal  FROM tbl_inspeksi_detail_now tidn WHERE tidn.prod_oder='$rowdb2[PRODUCTIONORDERCODE]' and tidn.ket_bs ='BS Mekanik'");
+	 $sql=sqlsrv_query($con," SELECT sum(berat_awal) as berat_awal  FROM dbknitt.tbl_inspeksi_detail_now WHERE prod_oder=? and ket_bs ='BS Mekanik'",[$rowdb2['PRODUCTIONORDERCODE']]);
 	 }else{
-	 $sql=mysqli_query($con," SELECT sum(berat_awal) as berat_awal  FROM tbl_inspeksi_detail_now tidn WHERE tidn.demandno='$rowdb2[PRODUCTIONDEMANDCODE]' and tidn.ket_bs ='BS Mekanik'");	 
+	 $sql=sqlsrv_query($con," SELECT sum(berat_awal) as berat_awal  FROM dbknitt.tbl_inspeksi_detail_now WHERE demandno=? and ket_bs ='BS Mekanik'",[$rowdb2['PRODUCTIONDEMANDCODE']]);	 
 	 }	 
-	 $rowd=mysqli_fetch_array($sql);
+	 if($sql){$rowd=sqlsrv_fetch_array($sql,SQLSRV_FETCH_ASSOC);}
 	 if($stsgabung!=""){
-	 $sql1=mysqli_query($con," SELECT sum(berat_awal) as berat_awal FROM tbl_inspeksi_detail_now tidn WHERE tidn.prod_oder='$rowdb2[PRODUCTIONORDERCODE]' and tidn.ket_bs ='BS Produksi'");
+	 $sql1=sqlsrv_query($con," SELECT sum(berat_awal) as berat_awal FROM dbknitt.tbl_inspeksi_detail_now WHERE prod_oder=? and ket_bs ='BS Produksi'",[$rowdb2['PRODUCTIONORDERCODE']]);
 	 }else{
-	 $sql1=mysqli_query($con," SELECT sum(berat_awal) as berat_awal FROM tbl_inspeksi_detail_now tidn WHERE tidn.demandno='$rowdb2[PRODUCTIONDEMANDCODE]' and tidn.ket_bs ='BS Produksi'");	 
+	 $sql1=sqlsrv_query($con," SELECT sum(berat_awal) as berat_awal FROM dbknitt.tbl_inspeksi_detail_now WHERE demandno=? and ket_bs ='BS Produksi'",[$rowdb2['PRODUCTIONDEMANDCODE']]);	 
 	 }
-	 $rowd1=mysqli_fetch_array($sql1);                    
+	 if($sql1){$rowd1=sqlsrv_fetch_array($sql1,SQLSRV_FETCH_ASSOC);}                    
                    if($stsgabung!=""){
-	 $sql2=mysqli_query($con," SELECT sum(berat_awal) as berat_awal FROM tbl_inspeksi_detail_now tidn 
-	 WHERE tidn.prod_oder='$rowdb2[PRODUCTIONORDERCODE]' and tidn.ket_bs ='BS Lain-lain'");
+	 $sql2=sqlsrv_query($con," SELECT sum(berat_awal) as berat_awal FROM dbknitt.tbl_inspeksi_detail_now 
+	 WHERE prod_oder=? and ket_bs ='BS Lain-lain'",[$rowdb2['PRODUCTIONORDERCODE']]);
 	  }else{
-	 $sql2=mysqli_query($con," SELECT sum(berat_awal) as berat_awal FROM tbl_inspeksi_detail_now tidn 
-	 WHERE tidn.demandno='$rowdb2[PRODUCTIONDEMANDCODE]' and tidn.ket_bs ='BS Lain-lain'");
+	 $sql2=sqlsrv_query($con," SELECT sum(berat_awal) as berat_awal FROM dbknitt.tbl_inspeksi_detail_now 
+	 WHERE demandno=? and ket_bs ='BS Lain-lain'",[$rowdb2['PRODUCTIONDEMANDCODE']]);
 	 }	 
-                    $rowd2 = mysqli_fetch_array($sql2);
+                    if($sql2){$rowd2 = sqlsrv_fetch_array($sql2,SQLSRV_FETCH_ASSOC);}
                     if (($rowdb21['KGPAKAI'] - ($rowdb22['KGSISA'] ?? 0)) > 0) {
                         $prsn = round(($rowd['berat_awal'] / ($rowdb21['KGPAKAI'] - ($rowdb22['KGSISA'] ?? 0))) * 100, 2);
                         $prsn1 = round(($rowd1['berat_awal'] / ($rowdb21['KGPAKAI'] - ($rowdb22['KGSISA'] ?? 0))) * 100, 2);
