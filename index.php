@@ -226,8 +226,8 @@ padding: 15px 15px 0 15px;
 <!--			  <li><a href="LapIdentBenangOrder" class="dropdown-item">Laporan Identifikasi Benang Per Order</a></li>-->
 			  <li><a href="LapIdentBenangOrderNew" class="dropdown-item">Laporan Identifikasi Benang Per Order New</a></li>	
 			  <li><a href="LapIdentBenangProject" class="dropdown-item">Laporan Identifikasi Benang Per Project</a></li>	
-			  <li><a href="LapEffBulan" class="dropdown-item">Laporan Bulanan Efficiency</a></li>	
-			  <li><a href="LapStockBenangBulan" class="dropdown-item">Laporan Stock Benang untuk Stock Opname</a></li>
+			  <!-- <li><a href="LapEffBulan" class="dropdown-item">Laporan Bulanan Efficiency</a></li>	 -->
+			  <!-- <li><a href="LapStockBenangBulan" class="dropdown-item">Laporan Stock Benang untuk Stock Opname</a></li> -->
 			  <li><a href="LapPerformanceInspector" class="dropdown-item">Laporan Performance Inspector</a></li>
 			  <li><a href="LapPerformanceYarnOPR" class="dropdown-item">Laporan Performance Yarn OPR</a></li>
 			  <li><a href="LapPerformancePetugasPengiriman" class="dropdown-item">Laporan Performance Petugas Pengiriman</a></li>
