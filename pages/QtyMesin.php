@@ -76,7 +76,7 @@ $Akhir	= isset($_POST['tgl_akhir']) ? $_POST['tgl_akhir'] : '';
 	}else{
 		$Tgl= " AND VARCHAR_FORMAT(e.INSPECTIONSTARTDATETIME,'YYYY-MM-DD') BETWEEN '2200-12-12' AND '2200-12-12' " ;
 	}
-$sqlDB2 =" SELECT sum(e.WEIGHTNET) AS KG,ik.SCHEDULEDRESOURCECODE, 
+$sqlDB2 =" SELECT sum(e.WEIGHTNET) AS KG,
 CASE 
       WHEN 
          VARCHAR_FORMAT(e.INSPECTIONSTARTDATETIME,'HH24:MI') > '06:59' AND VARCHAR_FORMAT(e.INSPECTIONSTARTDATETIME,'HH24:MI') < '14:59' 
@@ -94,7 +94,8 @@ CASE
    END AS SHIFT
 FROM ELEMENTSINSPECTION e LEFT JOIN ITXVIEWKK_KNT ik ON ik.CODE= e.DEMANDCODE 
 WHERE e.ELEMENTITEMTYPECODE ='KGF' $Tgl 
-GROUP BY  ik.SCHEDULEDRESOURCECODE,(CASE 
+GROUP BY  
+(CASE 
       WHEN 
          VARCHAR_FORMAT(e.INSPECTIONSTARTDATETIME,'HH24:MI') > '06:59' AND VARCHAR_FORMAT(e.INSPECTIONSTARTDATETIME,'HH24:MI') < '14:59' 
       THEN 
@@ -110,14 +111,17 @@ GROUP BY  ik.SCHEDULEDRESOURCECODE,(CASE
    END 
    END) ";	
 $stmt   = db2_exec($conn1,$sqlDB2, array('cursor'=>DB2_SCROLLABLE));
+if ($stmt === false) {
+    echo "<div class='alert alert-danger'>Query error di ".basename(__FILE__).": ".print_r(db2_stmt_errormsg(), true)."</div>";
+}
 $no=1;   
 $c=0;
- while ($rowdb2 = db2_fetch_assoc($stmt)) {
+ while ($stmt && ($rowdb2 = db2_fetch_assoc($stmt))) {
 	   ?>
 	  <tr>
       <td><?php echo $no; ?></td>
       <td><?php echo $rowdb2['SHIFT']; ?></td>
-      <td><?php echo $rowdb2['SCHEDULEDRESOURCECODE']; ?></td>
+      <td><?php //echo $rowdb2['SCHEDULEDRESOURCECODE']; ?></td>
       <td><?php echo $rowdb2['KG']; ?></td>
       </tr>				  
 	<?php 

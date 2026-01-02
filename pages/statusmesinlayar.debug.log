@@ -1,0 +1,76 @@
+[2026-01-02 10:21:05] insert_statusmesinlayar_ok_batch: 300
+[2026-01-02 10:21:05] insert_statusmesinlayar_ok_batch: 113
+[2026-01-02 10:21:05] insert_statusmesinlayar_nomesin_failed: Array
+(
+    [0] => Array
+        (
+            [0] => 42000
+            [SQLSTATE] => 42000
+            [1] => 8114
+            [code] => 8114
+            [2] => [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Error converting data type varchar to numeric.
+            [message] => [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Error converting data type varchar to numeric.
+        )
+
+)
+
+[2026-01-02 10:21:05] insert_statusmesinlayar_nomesin_failed: Array
+(
+    [0] => Array
+        (
+            [0] => 42000
+            [SQLSTATE] => 42000
+            [1] => 8114
+            [code] => 8114
+            [2] => [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Error converting data type varchar to numeric.
+            [message] => [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Error converting data type varchar to numeric.
+        )
+
+)
+
+[2026-01-02 10:21:05] insert_statusmesinlayar_nomesin_failed: Array
+(
+    [0] => Array
+        (
+            [0] => 42000
+            [SQLSTATE] => 42000
+            [1] => 8114
+            [code] => 8114
+            [2] => [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Error converting data type varchar to numeric.
+            [message] => [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Error converting data type varchar to numeric.
+        )
+
+)
+
+[2026-01-02 10:21:05] insert_statusmesinlayar_nomesin_failed: Array
+(
+    [0] => Array
+        (
+            [0] => 42000
+            [SQLSTATE] => 42000
+            [1] => 8114
+            [code] => 8114
+            [2] => [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Error converting data type varchar to numeric.
+            [message] => [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Error converting data type varchar to numeric.
+        )
+
+)
+
+[2026-01-02 10:22:34] insert_statusmesinlayar_ok_batch: 300
+[2026-01-02 10:22:34] insert_statusmesinlayar_ok_batch: 113
+[2026-01-02 10:22:36] insert_statusmesinlayar_nomesin_ok_batch: 100
+[2026-01-02 10:22:36] insert_statusmesinlayar_nomesin_ok_batch: 100
+[2026-01-02 10:22:36] insert_statusmesinlayar_nomesin_ok_batch: 100
+[2026-01-02 10:22:36] insert_statusmesinlayar_nomesin_ok_batch: 10
+[2026-01-02 10:23:21] insert_statusmesinlayar_ok_batch: 300
+[2026-01-02 10:23:21] insert_statusmesinlayar_ok_batch: 113
+[2026-01-02 10:23:21] insert_statusmesinlayar_nomesin_ok_batch: 100
+[2026-01-02 10:23:21] insert_statusmesinlayar_nomesin_ok_batch: 100
+[2026-01-02 10:23:22] insert_statusmesinlayar_nomesin_ok_batch: 100
+[2026-01-02 10:23:22] insert_statusmesinlayar_nomesin_ok_batch: 10
+[2026-01-02 10:24:02] insert_statusmesinlayar_ok_batch: 300
+[2026-01-02 10:24:02] insert_statusmesinlayar_ok_batch: 113
+[2026-01-02 10:24:03] insert_statusmesinlayar_nomesin_ok_batch: 100
+[2026-01-02 10:24:03] insert_statusmesinlayar_nomesin_ok_batch: 100
+[2026-01-02 10:24:03] insert_statusmesinlayar_nomesin_ok_batch: 100
+[2026-01-02 10:24:03] insert_statusmesinlayar_nomesin_ok_batch: 10

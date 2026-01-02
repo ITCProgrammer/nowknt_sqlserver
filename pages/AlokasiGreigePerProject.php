@@ -19,8 +19,8 @@ WHERE ITEMTYPEAFICODE ='KGF' AND (PROJECTCODE ='$Project' OR ORIGDLVSALORDLINESA
 GROUP BY SUBCODE02,SUBCODE03,SUBCODE04,CURRENT_TIMESTAMP  ";	
 $stmt   = db2_exec($conn1,$sqlDB2, array('cursor'=>DB2_SCROLLABLE));
 
-$sqlN=mysqli_query($con,"SELECT note FROM tbl_opn_rmp_now WHERE no_po='$Project' and no_artikel='$HangerNO' ORDER BY id DESC");
-$rN=mysqli_fetch_array($sqlN)
+$sqlN = sqlsrv_query($con,"SELECT TOP 1 note FROM dbknitt.tbl_opn_rmp_now WHERE no_po=? and no_artikel=? ORDER BY id DESC", [$Project, $HangerNO]);
+$rN = $sqlN ? sqlsrv_fetch_array($sqlN, SQLSRV_FETCH_ASSOC) : [];
 ?>
 <!-- Main content -->
       <div class="container-fluid">
@@ -62,7 +62,7 @@ $rN=mysqli_fetch_array($sqlN)
 			  	  <div class="form-group row">
                     <label for="note" class="col-md-5">Note</label>
 					<div class="col-md-7"> 
-                   	<textarea name="note" class="form-control form-control-sm" readonly><?php $rN['note']; ?></textarea>
+                   	<textarea name="note" class="form-control form-control-sm" readonly><?php echo $rN['note'] ?? ''; ?></textarea>
                   </div>	
                   </div>
 			  
@@ -286,8 +286,9 @@ $tglEstX=date('Y-m-d', strtotime($kHariX." days", strtotime($rowdb21['TGLS'])));
                   <tbody>
 				  <?php
 $no=1;					  
-$sql=mysqli_query($con,"SELECT * FROM tbl_pembagian_greige_now WHERE no_po='$Project' ORDER BY id DESC");
-  while($r=mysqli_fetch_array($sql)){
+$sql=sqlsrv_query($con,"SELECT * FROM dbknitt.tbl_pembagian_greige_now WHERE no_po=? ORDER BY id DESC", [$Project]);
+$tOrder = 0;
+  while($r = $sql ? sqlsrv_fetch_array($sql, SQLSRV_FETCH_ASSOC) : null){
 	   ?>
 	  <tr>
       <td style="text-align: center"><?php echo $no; ?></td>

@@ -129,7 +129,7 @@ padding: 15px 15px 0 15px;
               <li><a href="StatusMesinCams" class="dropdown-item">Status Mesin Cams</a></li>
 			  <li><a href="StatusMesinCamsIns" class="dropdown-item">Status Mesin Cams (Inspeksi)</a></li>	
 <!--			  <li><a href="StatusMesinNOWLama" class="dropdown-item">Status Mesin Lama</a></li>	-->
-			  <li><a href="StatusMesinLayarCams" class="dropdown-item">Status Mesin Layar</a></li>	
+			  <!-- <li><a href="StatusMesinLayarCams" class="dropdown-item">Status Mesin Layar</a></li>	 -->
 			</ul>
           </li>	
           <li class="nav-item dropdown">
@@ -137,7 +137,7 @@ padding: 15px 15px 0 15px;
             <ul aria-labelledby="dropdownSubMenu1" class="dropdown-menu border-0 shadow">
             <li><a href="KntSchedule" class="dropdown-item">Knitting Schedule</a></li>
             <li><a href="KntSchedule_all" class="dropdown-item">Knitting Schedule (All Status)</a></li>
-              <li><a href="StatusMesin" class="dropdown-item">Status Mesin</a></li>
+              <!-- <li><a href="StatusMesin" class="dropdown-item">Status Mesin</a></li> -->
 <!--			  <li><a href="StatusMesinNew" class="dropdown-item">Status Mesin New</a></li>	-->
 			  <li><a href="StatusMesinHarian" class="dropdown-item">Status Mesin Per Hari</a></li>	
 			  <li><a href="StatusMesinLayar" class="dropdown-item">Status Mesin Layar</a></li>
@@ -146,7 +146,7 @@ padding: 15px 15px 0 15px;
 			  <li><a href="pages/status-mesin-full-lt3.php" class="dropdown-item" target="_blank">Status Mesin Layar LT2+LT3</a></li>
 			  <li><a href="pages/status-mesin-full-lt4.php" class="dropdown-item" target="_blank">Status Mesin Layar LT4</a></li>	
 			  <li><a href="pages/status-mesin-full-lt5.php" class="dropdown-item" target="_blank">Status Mesin Layar LT5</a></li>	
-			  <li><a href="LossPO" class="dropdown-item">Loss PO Selesai</a></li>	
+			  <!-- <li><a href="LossPO" class="dropdown-item">Loss PO Selesai</a></li>	 -->
 			</ul>
           </li>
 <!--

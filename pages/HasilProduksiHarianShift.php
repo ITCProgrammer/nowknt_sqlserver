@@ -1,6 +1,7 @@
 <?php
 $Awal	= isset($_POST['tgl_awal']) ? $_POST['tgl_awal'] : '';
-$Akhir 	= date('Y-m-d', strtotime('+1 days', strtotime($Awal)))
+$Akhir 	= date('Y-m-d', strtotime('+1 days', strtotime($Awal)));
+$Gshift = isset($_POST['shift']) ? $_POST['shift'] : '';
 
 ?>
 <!-- Main content -->
@@ -240,19 +241,14 @@ function checkAll(form1){
 </script>
 <?php 
 if($_POST['mutasikain']=="MutasiKain"){
-	
-function mutasiurut(){
-include "koneksi.php";		
+
+function mutasiurut($con){
 $format = "20".date("ymd");
-$sql=mysqli_query($con,"SELECT no_mutasi FROM tbl_mutasi_kain WHERE substr(no_mutasi,1,8) like '%".$format."%' ORDER BY no_mutasi DESC LIMIT 1 ") or die (mysql_error());
-$d=mysqli_num_rows($sql);
-if($d>0){
-$r=mysqli_fetch_array($sql);
-$d=$r['no_mutasi'];
-$str=substr($d,8,2);
-$Urut = (int)$str;
-}else{
+$sql=sqlsrv_query($con,"SELECT TOP 1 no_mutasi FROM dbknitt.tbl_mutasi_kain WHERE SUBSTRING(no_mutasi,1,8) like ? ORDER BY no_mutasi DESC",[$format.'%']);
 $Urut = 0;
+if($sql && ($r=sqlsrv_fetch_array($sql,SQLSRV_FETCH_ASSOC))){
+$str=substr($r['no_mutasi'],8,2);
+$Urut = (int)$str;
 }
 $Urut = $Urut + 1;
 $Nol="";
@@ -263,23 +259,31 @@ $Nol= $Nol."0";
 $tidbr =$format.$Nol.$Urut;
 return $tidbr;
 }
-$nomid=mutasiurut();	
+$nomid=mutasiurut($con);	
 
-$sql1=mysqli_query($con,"SELECT *,count(b.transid) as jmlrol,a.transid as kdtrans FROM tbl_mutasi_kain a 
-LEFT JOIN tbl_prodemand b ON a.transid=b.transid 
-WHERE isnull(a.no_mutasi) AND date_format(a.tgl_buat ,'%Y-%m-%d')='$Awal' AND a.gshift='$Gshift' 
-GROUP BY a.transid");
+$params = [$Awal];
+$gshiftClause = "";
+if($Gshift!="" && $Gshift!="ALL"){
+  $gshiftClause = " AND a.gshift=?";
+  $params[] = $Gshift;
+}
+
+$sql1=sqlsrv_query($con,"SELECT a.transid,count(b.transid) as jmlrol FROM dbknitt.tbl_mutasi_kain a 
+LEFT JOIN dbknitt.tbl_prodemand b ON a.transid=b.transid 
+WHERE a.no_mutasi IS NULL AND CONVERT(date,a.tgl_buat)=?{$gshiftClause} 
+GROUP BY a.transid",$params);
 $n1=1;
 $noceklist1=1;	
-while($r1=mysqli_fetch_array($sql1)){	
+while($sql1 && ($r1=sqlsrv_fetch_array($sql1,SQLSRV_FETCH_ASSOC))){	
 	if($_POST['cek'][$n1]!='') 
 		{
 		$transid1 = $_POST['cek'][$n1];
-		mysqli_query($con,"UPDATE tbl_mutasi_kain SET
-		no_mutasi='$nomid',
-		tgl_mutasi=now()
-		WHERE transid='$transid1'
-		");
+		sqlsrv_query($con,"UPDATE dbknitt.tbl_mutasi_kain SET
+		no_mutasi=?,
+		tgl_mutasi=GETDATE()
+		WHERE transid=?",
+    [$nomid,$transid1]
+		);
 		}else{
 			$noceklist1++;
 	}

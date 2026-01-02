@@ -1,20 +1,27 @@
 <?php
 require_once "koneksi.php";
-mysqli_query($con_nowprd, "DELETE FROM statusmesinlayar WHERE CREATEDATETIME BETWEEN NOW() - INTERVAL 3 DAY AND NOW() - INTERVAL 1 DAY");
-mysqli_query($con_nowprd, "DELETE FROM statusmesinlayar WHERE IPADDRESS = '$_SERVER[REMOTE_ADDR]'"); 
+$ipAddr = $_SERVER['REMOTE_ADDR'];
+// temp logging helper (hapus setelah debug)
+function sml_log($label, $data) {
+    $msg = "[".date('Y-m-d H:i:s')."] {$label}: ".print_r($data, true).PHP_EOL;
+    file_put_contents(__DIR__.'/statusmesinlayar.debug.log', $msg, FILE_APPEND);
+}
+// cleanup old data (schema nowprd)
+sqlsrv_query($con_nowprd, "DELETE FROM nowprd.statusmesinlayar WHERE CREATEDATETIME BETWEEN DATEADD(day,-3,GETDATE()) AND DATEADD(day,-1,GETDATE())");
+sqlsrv_query($con_nowprd, "DELETE FROM nowprd.statusmesinlayar WHERE IPADDRESS = ?", [$ipAddr]); 
 
-mysqli_query($con_nowprd, "DELETE FROM statusmesinlayar_nomesin WHERE CREATEDATETIME BETWEEN NOW() - INTERVAL 3 DAY AND NOW() - INTERVAL 1 DAY");
-mysqli_query($con_nowprd, "DELETE FROM statusmesinlayar_nomesin WHERE IPADDRESS = '$_SERVER[REMOTE_ADDR]'"); 
+sqlsrv_query($con_nowprd, "DELETE FROM nowprd.statusmesinlayar_nomesin WHERE CREATEDATETIME BETWEEN DATEADD(day,-3,GETDATE()) AND DATEADD(day,-1,GETDATE())");
+sqlsrv_query($con_nowprd, "DELETE FROM nowprd.statusmesinlayar_nomesin WHERE IPADDRESS = ?", [$ipAddr]); 
 
 ?>
 <meta http-equiv="refresh" content="300">
 <?php
 	function NoMesin($mc)
 	{
-		$con_nowprd=mysqli_connect("10.0.0.10","dit","4dm1n","nowprd");
-		$sqlDB2 = "SELECT DISTINCT * FROM statusmesinlayar_nomesin WHERE VALUESTRING = '$mc' AND IPADDRESS = '$_SERVER[REMOTE_ADDR]'";
-		$stmt   = mysqli_query($con_nowprd, $sqlDB2);
-		$rowdb2 = mysqli_fetch_assoc($stmt);
+		global $con_nowprd, $ipAddr;
+		$sqlDB2 = "SELECT TOP 1 * FROM nowprd.statusmesinlayar_nomesin WHERE VALUESTRING = ? AND IPADDRESS = ?";
+		$stmt   = sqlsrv_query($con_nowprd, $sqlDB2, [$mc, $ipAddr]);
+		$rowdb2 = $stmt ? sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC) : [];
 		if (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and $rowdb2['JML'] > "0") {
 			$warnaD01 = "btn-danger";
 		} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "HOLD") {
@@ -115,19 +122,43 @@ mysqli_query($con_nowprd, "DELETE FROM statusmesinlayar_nomesin WHERE IPADDRESS 
 									USERGENERICGROUP.USERGENERICGROUPTYPECODE = 'MCK' AND 
 									USERGENERICGROUP.USERGENGROUPTYPECOMPANYCODE = '100' AND 
 									USERGENERICGROUP.OWNINGCOMPANYCODE = '100'";
-		$stmt   = db2_exec($conn1, $sql_statusmesinlayar);
+			$stmt   = db2_exec($conn1, $sql_statusmesinlayar);
 
-		while ($row_statusmesinlayar = db2_fetch_assoc($stmt)) {
-		$r_statusmesinlayar[]      = "('".TRIM(addslashes($row_statusmesinlayar['KDMC']))."',"
-									."'".TRIM(addslashes($row_statusmesinlayar['LONGDESCRIPTION']))."',"
-									."'".TRIM(addslashes($row_statusmesinlayar['SHORTDESCRIPTION']))."',"
-									."'".TRIM(addslashes($row_statusmesinlayar['SEARCHDESCRIPTION']))."',"
-									."'".$_SERVER['REMOTE_ADDR']."',"
-									."'".date('Y-m-d H:i:s')."')";
-		}
-		$value_statusmesinlayar        = implode(',', $r_statusmesinlayar);
-		$insert_statusmesinlayar       = mysqli_query($con_nowprd, "INSERT INTO statusmesinlayar(KDMC,LONGDESCRIPTION,SHORTDESCRIPTION,SEARCHDESCRIPTION,IPADDRESS,CREATEDATETIME) VALUES $value_statusmesinlayar");
-	// DB2 TO MYSQLI 1
+			$r_statusmesinlayar = [];
+			while ($row_statusmesinlayar = db2_fetch_assoc($stmt)) {
+				$r_statusmesinlayar[] = [
+					trim($row_statusmesinlayar['KDMC']),
+					trim($row_statusmesinlayar['LONGDESCRIPTION']),
+					trim($row_statusmesinlayar['SHORTDESCRIPTION']),
+					trim($row_statusmesinlayar['SEARCHDESCRIPTION'])
+				];
+			}
+			if (!empty($r_statusmesinlayar)) {
+				// batch to avoid 2100-parameter limit (6 params per row => max 350 rows per batch)
+				$chunks = array_chunk($r_statusmesinlayar, 300);
+				foreach ($chunks as $chunk) {
+					$sqlInsert1 = "INSERT INTO nowprd.statusmesinlayar (KDMC,LONGDESCRIPTION,SHORTDESCRIPTION,SEARCHDESCRIPTION,IPADDRESS,CREATEDATETIME) VALUES ";
+					$values = [];
+					$params = [];
+					foreach ($chunk as $rowVal) {
+						$values[] = "(?,?,?,?,?,?)";
+						$params[] = $rowVal[0];
+						$params[] = $rowVal[1];
+						$params[] = $rowVal[2];
+						$params[] = $rowVal[3];
+						$params[] = $ipAddr;
+						$params[] = date('Y-m-d H:i:s');
+					}
+					$sqlInsert1 .= implode(',', $values);
+					$ins1 = sqlsrv_query($con_nowprd, $sqlInsert1, $params);
+					if ($ins1 === false) {
+						sml_log('insert_statusmesinlayar_failed', sqlsrv_errors());
+					} else {
+						sml_log('insert_statusmesinlayar_ok_batch', count($chunk));
+					}
+				}
+			}
+		// DB2 TO MYSQLI 1
 
 	// DB2 TO MYSQLI 2
 		$sql_statusmesinlayar_nomesin	= "SELECT
@@ -230,33 +261,64 @@ mysqli_query($con_nowprd, "DELETE FROM statusmesinlayar_nomesin WHERE IPADDRESS 
 													STSMC.STEPNUMBER DESC) STSLAYAR
 											ORDER BY
 												STSLAYAR.URUT ASC";
-		$stmt_statusmesinlayar_nomesin	= db2_exec($conn1, $sql_statusmesinlayar_nomesin);
+			$stmt_statusmesinlayar_nomesin	= db2_exec($conn1, $sql_statusmesinlayar_nomesin);
+			$r_statusmesinlayar_nomesin = [];
 
-		while ($row_statusmesinlayar_nomesin = db2_fetch_assoc($stmt_statusmesinlayar_nomesin)) {
-		$r_statusmesinlayar_nomesin[]      = "('".TRIM(addslashes($row_statusmesinlayar_nomesin['VALUESTRING']))."',"
-									."'".TRIM(addslashes($row_statusmesinlayar_nomesin['SCHEDULEDRESOURCECODE']))."',"
-									."'".TRIM(addslashes($row_statusmesinlayar_nomesin['URUT']))."',"
-									."'".TRIM(addslashes($row_statusmesinlayar_nomesin['IDS']))."',"
-									."'".TRIM(addslashes($row_statusmesinlayar_nomesin['CODE']))."',"
-									."'".TRIM(addslashes($row_statusmesinlayar_nomesin['PROGRESSSTATUS']))."',"
-									."'".TRIM(addslashes($row_statusmesinlayar_nomesin['STEPNUMBER']))."',"
-									."'".TRIM(addslashes($row_statusmesinlayar_nomesin['LONGDESCRIPTION']))."',"
-									."'".TRIM(addslashes($row_statusmesinlayar_nomesin['PLANNEDOPERATIONCODE']))."',"
-									."'".TRIM(addslashes($row_statusmesinlayar_nomesin['STSDEMAND']))."',"
-									."'".TRIM(addslashes($row_statusmesinlayar_nomesin['RMPREQDATETO']))."',"
-									."'".TRIM(addslashes($row_statusmesinlayar_nomesin['QTYSALIN']))."',"
-									."'".TRIM(addslashes($row_statusmesinlayar_nomesin['QTYOPIN']))."',"
-									."'".TRIM(addslashes($row_statusmesinlayar_nomesin['QTYOPOUT']))."',"
-									."'".TRIM(addslashes($row_statusmesinlayar_nomesin['STSOPR']))."',"
-									."'".TRIM(addslashes($row_statusmesinlayar_nomesin['JML']))."',"
-									."'".$_SERVER['REMOTE_ADDR']."',"
-									."'".date('Y-m-d H:i:s')."')";
-		}
-		$value_statusmesinlayar_nomesin        = implode(',', $r_statusmesinlayar_nomesin);
-		$insert_statusmesinlayar_nomesin       = mysqli_query($con_nowprd, "INSERT INTO statusmesinlayar_nomesin(VALUESTRING,SCHEDULEDRESOURCECODE,URUT,IDS,CODE,PROGRESSSTATUS,STEPNUMBER,LONGDESCRIPTION,PLANNEDOPERATIONCODE,STSDEMAND,RMPREQDATETO,QTYSALIN,QTYOPIN,QTYOPOUT,STSOPR,JML,IPADDRESS,CREATEDATETIME) VALUES $value_statusmesinlayar_nomesin");
-	// DB2 TO MYSQLI 2
+				while ($row_statusmesinlayar_nomesin = db2_fetch_assoc($stmt_statusmesinlayar_nomesin)) {
+					$urut = is_numeric($row_statusmesinlayar_nomesin['URUT']) ? (int)$row_statusmesinlayar_nomesin['URUT'] : 0;
+					$stepnum = is_numeric($row_statusmesinlayar_nomesin['STEPNUMBER']) ? (int)$row_statusmesinlayar_nomesin['STEPNUMBER'] : 0;
+					$rmpreqto = trim($row_statusmesinlayar_nomesin['RMPREQDATETO']) !== '' ? $row_statusmesinlayar_nomesin['RMPREQDATETO'] : null;
+					$qsalin = is_numeric($row_statusmesinlayar_nomesin['QTYSALIN']) ? (float)$row_statusmesinlayar_nomesin['QTYSALIN'] : 0;
+					$qopin  = is_numeric($row_statusmesinlayar_nomesin['QTYOPIN']) ? (float)$row_statusmesinlayar_nomesin['QTYOPIN'] : 0;
+					$qopout = is_numeric($row_statusmesinlayar_nomesin['QTYOPOUT']) ? (float)$row_statusmesinlayar_nomesin['QTYOPOUT'] : 0;
+					$jmlVal = is_numeric($row_statusmesinlayar_nomesin['JML']) ? (float)$row_statusmesinlayar_nomesin['JML'] : 0;
+				$r_statusmesinlayar_nomesin[]      = [
+					TRIM($row_statusmesinlayar_nomesin['VALUESTRING']),
+					TRIM($row_statusmesinlayar_nomesin['SCHEDULEDRESOURCECODE']),
+					$urut,
+					TRIM($row_statusmesinlayar_nomesin['IDS']),
+					TRIM($row_statusmesinlayar_nomesin['CODE']),
+					TRIM($row_statusmesinlayar_nomesin['PROGRESSSTATUS']),
+					$stepnum,
+					TRIM($row_statusmesinlayar_nomesin['LONGDESCRIPTION']),
+					TRIM($row_statusmesinlayar_nomesin['PLANNEDOPERATIONCODE']),
+					TRIM($row_statusmesinlayar_nomesin['STSDEMAND']),
+					$rmpreqto,
+					$qsalin,
+					$qopin,
+					$qopout,
+					TRIM($row_statusmesinlayar_nomesin['STSOPR']),
+					$jmlVal
+				];
+				}
+			if (!empty($r_statusmesinlayar_nomesin)) {
+				// 18 params per row => max ~116 rows per batch
+				$chunks2 = array_chunk($r_statusmesinlayar_nomesin, 100);
+				foreach ($chunks2 as $chunk2) {
+					$sqlInsert2 = "INSERT INTO nowprd.statusmesinlayar_nomesin(VALUESTRING,SCHEDULEDRESOURCECODE,URUT,IDS,CODE,PROGRESSSTATUS,STEPNUMBER,LONGDESCRIPTION,PLANNEDOPERATIONCODE,STSDEMAND,RMPREQDATETO,QTYSALIN,QTYOPIN,QTYOPOUT,STSOPR,JML,IPADDRESS,CREATEDATETIME) VALUES ";
+					$values2 = [];
+					$params2 = [];
+					foreach ($chunk2 as $rowVal) {
+						$values2[] = "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+						$params2 = array_merge($params2, [
+							$rowVal[0], $rowVal[1], $rowVal[2], $rowVal[3], $rowVal[4],
+							$rowVal[5], $rowVal[6], $rowVal[7], $rowVal[8], $rowVal[9],
+							$rowVal[10], $rowVal[11], $rowVal[12], $rowVal[13], $rowVal[14],
+							$rowVal[15], $ipAddr, date('Y-m-d H:i:s')
+						]);
+					}
+					$sqlInsert2 .= implode(',', $values2);
+					$ins2 = sqlsrv_query($con_nowprd, $sqlInsert2, $params2, ["Scrollable" => SQLSRV_CURSOR_CLIENT_BUFFERED]);
+					if ($ins2 === false) {
+						sml_log('insert_statusmesinlayar_nomesin_failed', sqlsrv_errors());
+					} else {
+						sml_log('insert_statusmesinlayar_nomesin_ok_batch', count($chunk2));
+					}
+				}
+			}
+		// DB2 TO MYSQLI 2
 
-	$sqlDB2MC = "SELECT DISTINCT * FROM statusmesinlayar WHERE IPADDRESS = '$_SERVER[REMOTE_ADDR]'";
+	$sqlDB2MC = "SELECT DISTINCT * FROM nowprd.statusmesinlayar WHERE IPADDRESS = ?";
 
 	$TS = "0";
 	$TBW = "0";
@@ -271,8 +333,8 @@ mysqli_query($con_nowprd, "DELETE FROM statusmesinlayar_nomesin WHERE IPADDRESS 
 	$RS = "0";
 	$TPB = "0";
 	$OPR = "0";
-	$stmtMC   = mysqli_query($con_nowprd, $sqlDB2MC);
-	while ($rowdb2MC = mysqli_fetch_array($stmtMC)) {
+	$stmtMC   = sqlsrv_query($con_nowprd, $sqlDB2MC, [$ipAddr]);
+	while ($stmtMC && ($rowdb2MC = sqlsrv_fetch_array($stmtMC, SQLSRV_FETCH_ASSOC))) {
 		$sts = NoMesin($rowdb2MC['KDMC']);
 		if ($sts == "btn-default") {
 			$TAP = "1";

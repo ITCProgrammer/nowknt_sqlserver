@@ -112,8 +112,8 @@ s.LOGICALWAREHOUSECODE, s.WHSLOCATIONWAREHOUSEZONECODE, s.LOTCODE, s.CREATIONUSE
     while($rowdb21 = db2_fetch_assoc($stmt1)){ 
 $bon=trim($rowdb21['INTDOCUMENTPROVISIONALCODE'])."-".trim($rowdb21['ORDERLINE']);
 $itemc=trim($rowdb21['SUBCODE02'])."".trim($rowdb21['SUBCODE03'])." ".trim($rowdb21['SUBCODE04']);
-$sqlKt=mysqli_query($con," SELECT no_mesin FROM tbl_mesin WHERE kd_dtex='".$rowdb21['MESIN']."' LIMIT 1");
-$rk=mysqli_fetch_array($sqlKt);		
+$sqlKt = sqlsrv_query($con, "SELECT TOP 1 no_mesin FROM dbknitt.tbl_mesin WHERE kd_dtex = ?", [trim($rowdb21['MESIN'])]);
+$rk = $sqlKt ? sqlsrv_fetch_array($sqlKt, SQLSRV_FETCH_ASSOC) : [];		
 if (trim($rowdb21['PROVISIONALCOUNTERCODE']) =='I02M50') { $knitt = 'GREIGE-ITTI'; } 
 $sqlDB2KPI = " SELECT
 	a.VALUESTRING AS KD,
@@ -208,42 +208,39 @@ if($_POST['mutasikain']=="MutasiKain"){
 function mutasiurut(){
 include "koneksi.php";		
 $format = "20".date("ymd");
-$sql=mysqli_query($con,"SELECT no_mutasi FROM tbl_mutasi_kain WHERE substr(no_mutasi,1,8) like '%".$format."%' ORDER BY no_mutasi DESC LIMIT 1 ") or die (mysql_error());
-$d=mysqli_num_rows($sql);
-if($d>0){
-$r=mysqli_fetch_array($sql);
-$d=$r['no_mutasi'];
-$str=substr($d,8,2);
-$Urut = (int)$str;
+$stmt = sqlsrv_query($con, "SELECT TOP 1 no_mutasi FROM dbknitt.tbl_mutasi_kain WHERE SUBSTRING(no_mutasi,1,8) LIKE ? ORDER BY no_mutasi DESC", ['%'.$format.'%']);
+$row = $stmt ? sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC) : null;
+if($row){
+    $str=substr($row['no_mutasi'],8,2);
+    $Urut = (int)$str;
 }else{
-$Urut = 0;
+    $Urut = 0;
 }
 $Urut = $Urut + 1;
 $Nol="";
 $nilai=2-strlen($Urut);
 for ($i=1;$i<=$nilai;$i++){
-$Nol= $Nol."0";
+    $Nol= $Nol."0";
 }
 $tidbr =$format.$Nol.$Urut;
 return $tidbr;
 }
 $nomid=mutasiurut();	
 
-$sql1=mysqli_query($con,"SELECT *,count(b.transid) as jmlrol,a.transid as kdtrans FROM tbl_mutasi_kain a 
-LEFT JOIN tbl_prodemand b ON a.transid=b.transid 
-WHERE isnull(a.no_mutasi) AND date_format(a.tgl_buat ,'%Y-%m-%d')='$Awal' AND a.gshift='$Gshift' 
-GROUP BY a.transid");
+$sql1=sqlsrv_query($con,"SELECT a.transid as kdtrans, COUNT(b.transid) as jmlrol FROM dbknitt.tbl_mutasi_kain a 
+LEFT JOIN dbknitt.tbl_prodemand b ON a.transid=b.transid 
+WHERE a.no_mutasi IS NULL AND CONVERT(date,a.tgl_buat)=? AND a.gshift=? 
+GROUP BY a.transid", [$Awal, $Gshift]);
 $n1=1;
 $noceklist1=1;	
-while($r1=mysqli_fetch_array($sql1)){	
+while($r1 = $sql1 ? sqlsrv_fetch_array($sql1, SQLSRV_FETCH_ASSOC) : null){	
 	if($_POST['cek'][$n1]!='') 
 		{
 		$transid1 = $_POST['cek'][$n1];
-		mysqli_query($con,"UPDATE tbl_mutasi_kain SET
-		no_mutasi='$nomid',
-		tgl_mutasi=now()
-		WHERE transid='$transid1'
-		");
+		sqlsrv_query($con,"UPDATE dbknitt.tbl_mutasi_kain SET
+		no_mutasi=?,
+		tgl_mutasi=GETDATE()
+		WHERE transid=?", [$nomid, $transid1]);
 		}else{
 			$noceklist1++;
 	}

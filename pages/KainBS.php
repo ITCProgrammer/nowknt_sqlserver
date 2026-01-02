@@ -94,36 +94,53 @@ $Shift	= isset($_POST['shift']) ? $_POST['shift'] : '';
                   </tr>
                   </thead>
                   <tbody>
-				  <?php
+	<?php
 	if( $Awal!="" and $Akhir!=""){				  
-	$Tgl= " AND `tgl_inspek` BETWEEN '$Awal' AND '$Akhir' " ;
+	$Tgl= " AND tgl_inspek BETWEEN '$Awal' AND '$Akhir' " ;
 	}else{
-		$Tgl= " AND `tgl_inspek` BETWEEN '2200-12-12' AND '2200-12-12' " ;
+		$Tgl= " AND tgl_inspek BETWEEN '2200-12-12' AND '2200-12-12' " ;
 	}
 	if($Shift!=""){
 		$Shft=" AND a.shift='$Shift' ";
 	}else{
 		$Shft=" ";
 	}
-		$sql=mysqli_query($con," SELECT
-IF (
-       (berat_awal>berat),
-       'BS',''
- ) AS gradeid,
-  (berat_awal-berat)as brt,b.no_po,b.no_artikel,b.jenis_benang,no_mc,a.shift as shft,a.`user` as nama,a.grup,a.jns_bs,tgl_inspek as tgl_masuk,a.jam_ptg,a.ket,b.dept,
- a.ket_bs,a.bs_nm,a.bs_leader,a.demandno,b.jenis_kain
- FROM
-       tbl_inspeksi_now b
- INNER JOIN  tbl_inspeksi_detail_now a ON b.id=a.id_inspeksi
- WHERE
- IF (
-       (berat_awal>berat),
-       'BS',''
- )='BS' $Tgl $Shft
-ORDER BY a.shift,tgl_inspek asc ");
+		$sqlText = "
+SELECT
+	CASE WHEN (berat_awal>berat) THEN 'BS' ELSE '' END AS gradeid,
+	(berat_awal-berat) AS brt,
+	b.no_po,
+	b.no_artikel,
+	b.jenis_benang,
+	no_mc,
+	a.shift AS shft,
+	a.[user] AS nama,
+	a.grup,
+	a.jns_bs,
+	tgl_inspek AS tgl_masuk,
+	a.jam_ptg,
+	a.ket,
+	b.dept,
+	a.ket_bs,
+	a.bs_nm,
+	a.bs_leader,
+	a.demandno,
+	b.jenis_kain
+FROM
+	dbknitt.tbl_inspeksi_now b
+INNER JOIN dbknitt.tbl_inspeksi_detail_now a ON b.id=a.id_inspeksi
+WHERE
+	CASE WHEN (berat_awal>berat) THEN 'BS' ELSE '' END = 'BS' $Tgl $Shft
+ORDER BY a.shift,tgl_inspek ASC
+";
+		$sql = sqlsrv_query($con, $sqlText);
+		if ($sql === false) {
+			$err = print_r(sqlsrv_errors(), true);
+			echo "<div class='alert alert-danger'>Query error di ".basename(__FILE__).": ".$err."</div>";
+		}
    $no=1;   
    $c=0;
-    while($rowd=mysqli_fetch_array($sql)){
+    while($rowd = $sql ? sqlsrv_fetch_array($sql, SQLSRV_FETCH_ASSOC) : null){
 	   ?>
 	  <tr>
       <td><?php echo $no; ?></td>
@@ -132,7 +149,7 @@ ORDER BY a.shift,tgl_inspek asc ");
       <td><?php echo $rowd['nama']; ?></td>
       <td><?php echo $rowd['no_po']; ?></td>
       <td><?php echo $rowd['no_artikel']; ?></td>
-      <td><?php echo $rowd['brt']; ?></td>
+      <td><?php echo number_format((float)$rowd['brt'], 2, '.', ''); ?></td>
       <td><?php echo $rowd['jenis_kain']; ?></td>
       <td><?php if($rowd['ket_bs']=="BS Mekanik"){echo "Setelan";}else if($rowd['ket_bs']=="BS Produksi"){echo "Produksi";} else if($rowd['ket_bs']=="BS Lain"){echo "Lain-Lain";} ?></td>
       <td><?php echo $rowd['bs_nm']; ?></td>

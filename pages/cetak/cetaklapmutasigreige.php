@@ -152,8 +152,8 @@ s.LOGICALWAREHOUSECODE, s.WHSLOCATIONWAREHOUSEZONECODE, s.LOTCODE, s.CREATIONUSE
     while($rowdb21 = db2_fetch_assoc($stmt1)){ 
 $bon=trim($rowdb21['INTDOCUMENTPROVISIONALCODE'])."-".trim($rowdb21['ORDERLINE']);
 $itemc=trim($rowdb21['SUBCODE02'])."".trim($rowdb21['SUBCODE03'])." ".trim($rowdb21['SUBCODE04']);
-$sqlKt=mysqli_query($con," SELECT no_mesin FROM tbl_mesin WHERE kd_dtex='".$rowdb21['MESIN']."' LIMIT 1");
-$rk=mysqli_fetch_array($sqlKt);		
+$sqlKt = sqlsrv_query($con, "SELECT TOP 1 no_mesin FROM dbknitt.tbl_mesin WHERE kd_dtex = ?", [trim($rowdb21['MESIN'])]);
+$rk = $sqlKt ? sqlsrv_fetch_array($sqlKt, SQLSRV_FETCH_ASSOC) : [];		
 if (trim($rowdb21['PROVISIONALCOUNTERCODE']) =='I02M50') { $knitt = 'GREIGE-ITTI'; } 
 $sqlDB2KPI = " SELECT
 	a.VALUESTRING AS KD,
@@ -174,6 +174,7 @@ WHERE
 $stmt2KPI   = db2_exec($conn1,$sqlDB2KPI, array('cursor'=>DB2_SCROLLABLE));
 $rKPI = db2_fetch_assoc($stmt2KPI);	 
 $brt =number_format(round($rowdb21['KG'],2),2);		
+$mesinNo = isset($rk['no_mesin']) ? $rk['no_mesin'] : '';
             echo "<tr valign='top'>
   	<td>$bon</td>
     <td>$itemc</td>
@@ -182,7 +183,7 @@ $brt =number_format(round($rowdb21['KG'],2),2);
     <td>$rowdb21[LOTCODE]</td>
     <td align =center>$rowdb21[ROL]</td>
 	<td align =right>$brt</td>
-	<td align =center>$rk[no_mesin]</td>
+	<td align =center>$mesinNo</td>
 	</tr>";
             $tKg+=$rowdb21['KG'];
             $no++;

@@ -2,8 +2,8 @@
 include"../koneksi.php";
 ini_set("error_reporting",1);
 
-$news=mysqli_query($con,"SELECT * FROM tbl_news_line WHERE gedung='LT 2' LIMIT 1");
-$rNews=mysqli_fetch_array($news);
+$news = sqlsrv_query($con,"SELECT TOP 1 * FROM dbknitt.tbl_news_line WHERE gedung='LT 2'");
+$rNews = $news ? sqlsrv_fetch_array($news, SQLSRV_FETCH_ASSOC) : [];
 ?>
 
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">

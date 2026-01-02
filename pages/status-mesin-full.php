@@ -2,8 +2,8 @@
 include "../koneksi.php";
 ini_set("error_reporting", 1);
 
-$news = mysqli_query($con, "SELECT * FROM tbl_news_line WHERE gedung='LT 1' LIMIT 1");
-$rNews = mysqli_fetch_array($news);
+$news = sqlsrv_query($con, "SELECT TOP 1 * FROM dbknitt.tbl_news_line WHERE gedung='LT 1'");
+$rNews = $news ? sqlsrv_fetch_array($news, SQLSRV_FETCH_ASSOC) : [];
 ?>
 
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -77,12 +77,12 @@ $rNews = mysqli_fetch_array($news);
 
 <body>
 	<?php
-		include "../koneksiDB2.php";
-		$allData=array();
-		function searchData($mc)
-		{
-			global $allData,$conn1;
-			$sqlDB2 = "SELECT
+	include "../koneksiDB2.php";
+	$allData = array();
+	function searchData($mc)
+	{
+		global $allData, $conn1;
+		$sqlDB2 = "SELECT
 							*, CURRENT_TIMESTAMP AS TGLS
 						FROM
 							(SELECT 
@@ -174,215 +174,216 @@ $rNews = mysqli_fetch_array($news);
 								STSMC.STEPNUMBER DESC) STSLAYAR
 						ORDER BY
 							STSLAYAR.URUT ASC";
-			$stmt   = db2_exec($conn1, $sqlDB2, array('cursor' => DB2_SCROLLABLE));
-			$allData[$mc] = db2_fetch_assoc($stmt);
+		$stmt   = db2_exec($conn1, $sqlDB2, array('cursor' => DB2_SCROLLABLE));
+		$allData[$mc] = db2_fetch_assoc($stmt);
+		return $allData[$mc];
+	}
+	function getData($mc)
+	{
+		global $allData;
+		if (!array_key_exists($mc, $allData)) {
+			return searchData($mc);
+		} else {
 			return $allData[$mc];
 		}
-		function getData($mc){
-			global $allData;
-			if(!array_key_exists($mc,$allData)){
-				return searchData($mc);
-			}else{
-				return $allData[$mc];
-			}
-		}
-		function NoMesin($mc)
-		{
-			global $conn1;
-			$rowdb2 =getData($mc);
-			if (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and $rowdb2['JML'] > "0") {
-				$warnaD01 = "btn-danger";
-			} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "HOLD") {
-				if ($rowdb2['STSDEMAND'] == "Normal") {
-					$warnaD01 = "bg-black";
-				} else if ($rowdb2['STSDEMAND'] == "Sample") {	
-					$warnaD01 = "bg-black bulat";
-				} else {
-					$warnaD01 = "bg-black blink_me";
-				}
-			} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "PBS") {
-				if ($rowdb2['STSDEMAND'] == "Normal") {
-					$warnaD01 = "bg-pink";
-				} else if ($rowdb2['STSDEMAND'] == "Sample") {
-					$warnaD01 = "bg-pink bulat";
-				} else {
-					$warnaD01 = "bg-pink blink_me";
-				}
-			} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "PBG") {
-				if ($rowdb2['STSDEMAND'] == "Normal") {
-					$warnaD01 = "bg-orange";
-				} else if ($rowdb2['STSDEMAND'] == "Sample") {
-					$warnaD01 = "bg-orange bulat";
-				} else {
-					$warnaD01 = "bg-orange blink_me";
-				}
-			} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "AMC") {
-				if ($rowdb2['STSDEMAND'] == "Normal") {
-					$warnaD01 = "bg-yellow";
-				} else if ($rowdb2['STSDEMAND'] == "Sample") {
-					$warnaD01 = "bg-yellow bulat";
-				} else {
-					$warnaD01 = "bg-yellow blink_me";
-				}
-			} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "TPB") {
-				if ($rowdb2['STSDEMAND'] == "Normal") {
-					$warnaD01 = "bg-purple";
-				} else if ($rowdb2['STSDEMAND'] == "Sample") {	
-					$warnaD01 = "bg-purple bulat";
-				} else {
-					$warnaD01 = "bg-purple blink_me";
-				}
-			} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "TST") {
-				if ($rowdb2['STSDEMAND'] == "Normal") {
-					$warnaD01 = "bg-blue";
-				} else if ($rowdb2['STSDEMAND'] == "Sample") {
-					$warnaD01 = "bg-blue bulat";
-				} else {
-					$warnaD01 = "bg-blue blink_me";
-				}
-			} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "TTQ") {
-				if ($rowdb2['STSDEMAND'] == "Normal") {
-					$warnaD01 = "bg-gray";
-				} else if ($rowdb2['STSDEMAND'] == "Sample") {
-					$warnaD01 = "bg-gray bulat";
-				} else {
-					$warnaD01 = "bg-gray blink_me";
-				}
-			} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1")
-				and ($rowdb2['IDS'] == "3 ,3" or $rowdb2['IDS'] == "3 ,3 ,3")
-			) {
-				if ($rowdb2['STSDEMAND'] == "Normal") {
-					$warnaD01 = "bg-teal";
-				} else if ($rowdb2['STSDEMAND'] == "Sample") {
-					$warnaD01 = "bg-teal bulat";
-				} else {
-					$warnaD01 = "bg-teal blink_me";
-				}
-			} else if (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1")
-				and ($rowdb2['IDS'] == "2 ,0" or
-					$rowdb2['IDS'] == "0 ,2" or
-					$rowdb2['IDS'] == "2 ,2" or
-					$rowdb2['IDS'] == "2 ,3" or
-					$rowdb2['IDS'] == "3 ,2" or
-					$rowdb2['IDS'] == "2 ,2 ,3" or
-					$rowdb2['IDS'] == "2 ,0 ,0" or
-					$rowdb2['IDS'] == "2 ,2 ,0" or
-					$rowdb2['IDS'] == "0 ,0 ,2" or
-					$rowdb2['IDS'] == "0 ,2 ,0" or
-					$rowdb2['IDS'] == "0 ,2 ,2" or
-					$rowdb2['IDS'] == "0 ,2 ,0 ,0" or
-					$rowdb2['IDS'] == "2 ,2 ,0 ,2" or
-					$rowdb2['IDS'] == "2 ,2 ,0 ,0" or
-					$rowdb2['IDS'] == "3 ,2 ,0 ,2" or
-					$rowdb2['IDS'] == "2 ,3 ,0 ,3" or
-					$rowdb2['IDS'] == "2 ,2 ,3 ,0 ,2")
-			) {
-				if ($rowdb2['STSDEMAND'] == "Normal") {
-					$warnaD01 = "bg-green";
-				} else if ($rowdb2['STSDEMAND'] == "Sample") {
-					$warnaD01 = "bg-green bulat";
-				} else {
-					$warnaD01 = "bg-green blink_me";
-				}
-			} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and $rowdb2['LONGDESCRIPTION'] == "") {
-				if ($rowdb2['STSDEMAND'] == "Normal") {
-					$warnaD01 = "bg-orange pro";
-				} else if ($rowdb2['STSDEMAND'] == "Sample") {
-					$warnaD01 = "bg-orange pro bulat";
-				} else {
-					$warnaD01 = "bg-orange pro blink_me";
-				}
+	}
+	function NoMesin($mc)
+	{
+		global $conn1;
+		$rowdb2 = getData($mc);
+		if (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and $rowdb2['JML'] > "0") {
+			$warnaD01 = "btn-danger";
+		} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "HOLD") {
+			if ($rowdb2['STSDEMAND'] == "Normal") {
+				$warnaD01 = "bg-black";
+			} else if ($rowdb2['STSDEMAND'] == "Sample") {
+				$warnaD01 = "bg-black bulat";
 			} else {
-				$warnaD01 = "btn-default";
+				$warnaD01 = "bg-black blink_me";
 			}
-			return $warnaD01;
+		} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "PBS") {
+			if ($rowdb2['STSDEMAND'] == "Normal") {
+				$warnaD01 = "bg-pink";
+			} else if ($rowdb2['STSDEMAND'] == "Sample") {
+				$warnaD01 = "bg-pink bulat";
+			} else {
+				$warnaD01 = "bg-pink blink_me";
+			}
+		} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "PBG") {
+			if ($rowdb2['STSDEMAND'] == "Normal") {
+				$warnaD01 = "bg-orange";
+			} else if ($rowdb2['STSDEMAND'] == "Sample") {
+				$warnaD01 = "bg-orange bulat";
+			} else {
+				$warnaD01 = "bg-orange blink_me";
+			}
+		} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "AMC") {
+			if ($rowdb2['STSDEMAND'] == "Normal") {
+				$warnaD01 = "bg-yellow";
+			} else if ($rowdb2['STSDEMAND'] == "Sample") {
+				$warnaD01 = "bg-yellow bulat";
+			} else {
+				$warnaD01 = "bg-yellow blink_me";
+			}
+		} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "TPB") {
+			if ($rowdb2['STSDEMAND'] == "Normal") {
+				$warnaD01 = "bg-purple";
+			} else if ($rowdb2['STSDEMAND'] == "Sample") {
+				$warnaD01 = "bg-purple bulat";
+			} else {
+				$warnaD01 = "bg-purple blink_me";
+			}
+		} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "TST") {
+			if ($rowdb2['STSDEMAND'] == "Normal") {
+				$warnaD01 = "bg-blue";
+			} else if ($rowdb2['STSDEMAND'] == "Sample") {
+				$warnaD01 = "bg-blue bulat";
+			} else {
+				$warnaD01 = "bg-blue blink_me";
+			}
+		} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "TTQ") {
+			if ($rowdb2['STSDEMAND'] == "Normal") {
+				$warnaD01 = "bg-gray";
+			} else if ($rowdb2['STSDEMAND'] == "Sample") {
+				$warnaD01 = "bg-gray bulat";
+			} else {
+				$warnaD01 = "bg-gray blink_me";
+			}
+		} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1")
+			and ($rowdb2['IDS'] == "3 ,3" or $rowdb2['IDS'] == "3 ,3 ,3")
+		) {
+			if ($rowdb2['STSDEMAND'] == "Normal") {
+				$warnaD01 = "bg-teal";
+			} else if ($rowdb2['STSDEMAND'] == "Sample") {
+				$warnaD01 = "bg-teal bulat";
+			} else {
+				$warnaD01 = "bg-teal blink_me";
+			}
+		} else if (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1")
+			and ($rowdb2['IDS'] == "2 ,0" or
+				$rowdb2['IDS'] == "0 ,2" or
+				$rowdb2['IDS'] == "2 ,2" or
+				$rowdb2['IDS'] == "2 ,3" or
+				$rowdb2['IDS'] == "3 ,2" or
+				$rowdb2['IDS'] == "2 ,2 ,3" or
+				$rowdb2['IDS'] == "2 ,0 ,0" or
+				$rowdb2['IDS'] == "2 ,2 ,0" or
+				$rowdb2['IDS'] == "0 ,0 ,2" or
+				$rowdb2['IDS'] == "0 ,2 ,0" or
+				$rowdb2['IDS'] == "0 ,2 ,2" or
+				$rowdb2['IDS'] == "0 ,2 ,0 ,0" or
+				$rowdb2['IDS'] == "2 ,2 ,0 ,2" or
+				$rowdb2['IDS'] == "2 ,2 ,0 ,0" or
+				$rowdb2['IDS'] == "3 ,2 ,0 ,2" or
+				$rowdb2['IDS'] == "2 ,3 ,0 ,3" or
+				$rowdb2['IDS'] == "2 ,2 ,3 ,0 ,2")
+		) {
+			if ($rowdb2['STSDEMAND'] == "Normal") {
+				$warnaD01 = "bg-green";
+			} else if ($rowdb2['STSDEMAND'] == "Sample") {
+				$warnaD01 = "bg-green bulat";
+			} else {
+				$warnaD01 = "bg-green blink_me";
+			}
+		} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and $rowdb2['LONGDESCRIPTION'] == "") {
+			if ($rowdb2['STSDEMAND'] == "Normal") {
+				$warnaD01 = "bg-orange pro";
+			} else if ($rowdb2['STSDEMAND'] == "Sample") {
+				$warnaD01 = "bg-orange pro bulat";
+			} else {
+				$warnaD01 = "bg-orange pro blink_me";
+			}
+		} else {
+			$warnaD01 = "btn-default";
 		}
-		function Rajut($mc) 
-		{
-			global $conn1;
-			$rowdb2 =getData($mc);
-			$artNO	= trim($rowdb2['SUBCODE02']) . "" . trim($rowdb2['SUBCODE03']) . " " . trim($rowdb2['SUBCODE04']);
-			$sqlDB2M = "SELECT x.LONGDESCRIPTION,SHORTDESCRIPTION  FROM DB2ADMIN.USERGENERICGROUP x WHERE x.CODE='$mc'";
-			$stmtM   = db2_exec($conn1, $sqlDB2M, array('cursor' => DB2_SCROLLABLE));
-			$rowdb2M = db2_fetch_assoc($stmtM);
+		return $warnaD01;
+	}
+	function Rajut($mc)
+	{
+		global $conn1;
+		$rowdb2 = getData($mc);
+		$artNO	= trim($rowdb2['SUBCODE02']) . "" . trim($rowdb2['SUBCODE03']) . " " . trim($rowdb2['SUBCODE04']);
+		$sqlDB2M = "SELECT x.LONGDESCRIPTION,SHORTDESCRIPTION  FROM DB2ADMIN.USERGENERICGROUP x WHERE x.CODE='$mc'";
+		$stmtM   = db2_exec($conn1, $sqlDB2M, array('cursor' => DB2_SCROLLABLE));
+		$rowdb2M = db2_fetch_assoc($stmtM);
 
-			$sqlDB22 = "SELECT 
+		$sqlDB22 = "SELECT 
 							COUNT(WEIGHTREALNET ) AS JML, 
 							SUM(WEIGHTREALNET ) AS JQTY 
 						FROM 
 							ELEMENTSINSPECTION 
 						WHERE 
 							DEMANDCODE ='$rowdb2[CODE]' AND ELEMENTITEMTYPECODE='KGF'";
-			$stmt2   = db2_exec($conn1, $sqlDB22, array('cursor' => DB2_SCROLLABLE));
-			$rowdb22 = db2_fetch_assoc($stmt2);
+		$stmt2   = db2_exec($conn1, $sqlDB22, array('cursor' => DB2_SCROLLABLE));
+		$rowdb22 = db2_fetch_assoc($stmt2);
 
-			if ($rowdb2['BASEPRIMARYQUANTITY'] > 0) {
-				$kRajut = round(($rowdb2['BASEPRIMARYQUANTITY'] + $rowdb2['QTYOPOUT']) - ($rowdb2['QTYSALIN'] + $rowdb2['QTYOPIN']), 0) - round($rowdb22['JQTY'], 0);
-			} else {
-				$kRajut = "0";
-			}
-			$uk  = str_replace("'", "", $rowdb2M['SHORTDESCRIPTION']);
-			$uk1 = str_replace("'", "", $uk);
-			$uk2 = str_replace('"', '', $uk1);
-			$ukuran = $uk2;
-			if ($rowdb2['PROJECTCODE'] != "") {
-				$prj = $rowdb2['PROJECTCODE'];
-			} else {
-				$prj = $rowdb2['ORIGDLVSALORDLINESALORDERCODE'];
-			}
-			echo "<h3><u>" . $mc . "</u></h3>Ukuran: " . $ukuran . "<br> No PO: " . $prj . "<br>  No Art: " . $artNO . "<br> Kurang Rajut: " . $kRajut . "Kg<br> Catatan: " . $rowdb2M['LONGDESCRIPTION'];
+		if ($rowdb2['BASEPRIMARYQUANTITY'] > 0) {
+			$kRajut = round(($rowdb2['BASEPRIMARYQUANTITY'] + $rowdb2['QTYOPOUT']) - ($rowdb2['QTYSALIN'] + $rowdb2['QTYOPIN']), 0) - round($rowdb22['JQTY'], 0);
+		} else {
+			$kRajut = "0";
 		}
-		function Kurang($mc)
-		{
-			global $conn1;
-			$rowdb2 =getData($mc);
-			$sqlDB22 = "SELECT 
+		$uk  = str_replace("'", "", $rowdb2M['SHORTDESCRIPTION']);
+		$uk1 = str_replace("'", "", $uk);
+		$uk2 = str_replace('"', '', $uk1);
+		$ukuran = $uk2;
+		if ($rowdb2['PROJECTCODE'] != "") {
+			$prj = $rowdb2['PROJECTCODE'];
+		} else {
+			$prj = $rowdb2['ORIGDLVSALORDLINESALORDERCODE'];
+		}
+		echo "<h3><u>" . $mc . "</u></h3>Ukuran: " . $ukuran . "<br> No PO: " . $prj . "<br>  No Art: " . $artNO . "<br> Kurang Rajut: " . $kRajut . "Kg<br> Catatan: " . $rowdb2M['LONGDESCRIPTION'];
+	}
+	function Kurang($mc)
+	{
+		global $conn1;
+		$rowdb2 = getData($mc);
+		$sqlDB22 = "SELECT 
 							COUNT(WEIGHTREALNET ) AS JML, 
 							SUM(WEIGHTREALNET ) AS JQTY FROM 
 							ELEMENTSINSPECTION 
 						WHERE 
 							DEMANDCODE ='$rowdb2[CODE]' AND ELEMENTITEMTYPECODE='KGF'";
-			$stmt2   = db2_exec($conn1, $sqlDB22, array('cursor' => DB2_SCROLLABLE));
-			$rowdb22 = db2_fetch_assoc($stmt2);
+		$stmt2   = db2_exec($conn1, $sqlDB22, array('cursor' => DB2_SCROLLABLE));
+		$rowdb22 = db2_fetch_assoc($stmt2);
 
-			if ($rowdb2['BASEPRIMARYQUANTITY'] > 0) {
-				$kRajut = round(($rowdb2['BASEPRIMARYQUANTITY'] + $rowdb2['QTYOPOUT']) - ($rowdb2['QTYSALIN'] + $rowdb2['QTYOPIN']), 0) - round($rowdb22['JQTY'], 0);
-			} else {
-				$kRajut = "0";
-			}
-			return $kRajut;
+		if ($rowdb2['BASEPRIMARYQUANTITY'] > 0) {
+			$kRajut = round(($rowdb2['BASEPRIMARYQUANTITY'] + $rowdb2['QTYOPOUT']) - ($rowdb2['QTYSALIN'] + $rowdb2['QTYOPIN']), 0) - round($rowdb22['JQTY'], 0);
+		} else {
+			$kRajut = "0";
 		}
-		function waktu($mc)
-		{
-			global $conn1;
-			$rowdb2 =getData($mc);
-			$totHari = "";
-			$sqlDB22 = "SELECT 
+		return $kRajut;
+	}
+	function waktu($mc)
+	{
+		global $conn1;
+		$rowdb2 = getData($mc);
+		$totHari = "";
+		$sqlDB22 = "SELECT 
 							COUNT(WEIGHTREALNET ) AS JML, 
 							SUM(WEIGHTREALNET ) AS JQTY
 						FROM
 							ELEMENTSINSPECTION 
 						WHERE 
 							DEMANDCODE ='$rowdb2[CODE]' AND ELEMENTITEMTYPECODE='KGF'";
-			$stmt2   = db2_exec($conn1, $sqlDB22, array('cursor' => DB2_SCROLLABLE));
-			$rowdb22 = db2_fetch_assoc($stmt2);
+		$stmt2   = db2_exec($conn1, $sqlDB22, array('cursor' => DB2_SCROLLABLE));
+		$rowdb22 = db2_fetch_assoc($stmt2);
 
-			if ($rowdb2['BASEPRIMARYQUANTITY'] > 0) {
-				$kRajut = round($rowdb2['BASEPRIMARYQUANTITY'], 0) - round($rowdb22['JQTY'], 0);
-			} else {
-				$kRajut = 0;
-			}
+		if ($rowdb2['BASEPRIMARYQUANTITY'] > 0) {
+			$kRajut = round($rowdb2['BASEPRIMARYQUANTITY'], 0) - round($rowdb22['JQTY'], 0);
+		} else {
+			$kRajut = 0;
+		}
 
-			$sqlDB26 = "SELECT 
+		$sqlDB26 = "SELECT 
 							LASTUPDATEDATETIME
 						FROM 
 							PRODUCTIONDEMANDSTEP x
 						WHERE 
 							PRODUCTIONDEMANDCODE ='$rowdb2[CODE]' AND PROGRESSSTATUS ='2' ";
-			$stmt6   = db2_exec($conn1, $sqlDB26, array('cursor' => DB2_SCROLLABLE));
-			$rowdb26 = db2_fetch_assoc($stmt6);
+		$stmt6   = db2_exec($conn1, $sqlDB26, array('cursor' => DB2_SCROLLABLE));
+		$rowdb26 = db2_fetch_assoc($stmt6);
 
-			$sqlDB27 = " SELECT 
+		$sqlDB27 = " SELECT 
 							LASTUPDATEDATETIME
 						FROM  
 							PRODUCTIONDEMAND 
@@ -391,148 +392,150 @@ $rNews = mysqli_fetch_array($news);
 						ORDER BY 
 							LASTUPDATEDATETIME ASC 
 						LIMIT 1";
-			$stmt7   = db2_exec($conn1, $sqlDB27, array('cursor' => DB2_SCROLLABLE));
-			$rowdb27 = db2_fetch_assoc($stmt7);
+		$stmt7   = db2_exec($conn1, $sqlDB27, array('cursor' => DB2_SCROLLABLE));
+		$rowdb27 = db2_fetch_assoc($stmt7);
 
-			$awalPR  = strtotime($rowdb2['TGLS']);
-			$akhirPR = strtotime($rowdb2['INSPECTIONENDDATETIME']);
-			$diffPR  = ($akhirPR - $awalPR);
-			$tjamPR  = round($diffPR / (60 * 60), 2);
-			$hariPR  = round($tjamPR / 24, 2);
+		$awalPR  = strtotime($rowdb2['TGLS']);
+		$akhirPR = strtotime($rowdb2['INSPECTIONENDDATETIME']);
+		$diffPR  = ($akhirPR - $awalPR);
+		$tjamPR  = round($diffPR / (60 * 60), 2);
+		$hariPR  = round($tjamPR / 24, 2);
 
-			$awalPC  = strtotime($rowdb2['TGLS']);
-			$akhirPC = strtotime($rowdb26['LASTUPDATEDATETIME']);
-			$diffPC  = ($akhirPC - $awalPC);
-			$tjamPC  = round($diffPC / (60 * 60), 2);
-			$hariPC = round($tjamPC / 24, 1);
+		$awalPC  = strtotime($rowdb2['TGLS']);
+		$akhirPC = strtotime($rowdb26['LASTUPDATEDATETIME']);
+		$diffPC  = ($akhirPC - $awalPC);
+		$tjamPC  = round($diffPC / (60 * 60), 2);
+		$hariPC = round($tjamPC / 24, 1);
 
-			$awalPC1  = strtotime($rowdb2['TGLS']);
-			$akhirPC1 = strtotime($rowdb27['LASTUPDATEDATETIME']);
-			$diffPC1  = ($akhirPC1 - $awalPC1);
-			$tjamPC1  = round($diffPC1 / (60 * 60), 2);
-			$hariPC1 = round($tjamPC1 / 24, 1);
+		$awalPC1  = strtotime($rowdb2['TGLS']);
+		$akhirPC1 = strtotime($rowdb27['LASTUPDATEDATETIME']);
+		$diffPC1  = ($akhirPC1 - $awalPC1);
+		$tjamPC1  = round($diffPC1 / (60 * 60), 2);
+		$hariPC1 = round($tjamPC1 / 24, 1);
 
 
-			if (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and $rowdb2['JML'] > "0") {
-				$warnaD01 = "btn-danger";
-				$totHari = abs($hariPR);
-			} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "HOLD") {
-				if ($rowdb2['STSDEMAND'] == "Normal") {
-					$warnaD01 = "bg-black";
-				} else {
-					$warnaD01 = "bg-black blink_me";
-				}
-				$totHari = abs($hariPC);
-			} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "PBS") {
-				if ($rowdb2['STSDEMAND'] == "Normal") {
-					$warnaD01 = "bg-pink";
-				} else {
-					$warnaD01 = "bg-pink blink_me";
-				}
-				$totHari = abs($hariPC);
-			} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "PBG") {
-				if ($rowdb2['STSDEMAND'] == "Normal") {
-					$warnaD01 = "bg-orange";
-				} else {
-					$warnaD01 = "bg-orange blink_me";
-				}
-				$totHari = abs($hariPC);
-			} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "AMC") {
-				if ($rowdb2['STSDEMAND'] == "Normal") {
-					$warnaD01 = "bg-yellow";
-				} else {
-					$warnaD01 = "bg-yellow blink_me";
-				}
-				$totHari = abs($hariPC);
-			} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "TPB") {
-				if ($rowdb2['STSDEMAND'] == "Normal") {
-					$warnaD01 = "bg-purple";
-				} else {
-					$warnaD01 = "bg-purple blink_me";
-				}
-				$totHari = abs($hariPC);
-			} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "TST") {
-				if ($rowdb2['STSDEMAND'] == "Normal") {
-					$warnaD01 = "bg-blue";
-				} else {
-					$warnaD01 = "bg-blue blink_me";
-				}
-				$totHari = abs($hariPC);
-			} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "TTQ") {
-				if ($rowdb2['STSDEMAND'] == "Normal") {
-					$warnaD01 = "bg-gray";
-				} else {
-					$warnaD01 = "bg-gray blink_me";
-				}
-				$totHari = abs($hariPC);
-			} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and ($rowdb2['IDS'] == "3 ,3" or $rowdb2['IDS'] == "3 ,3 ,3")) {
-				if ($rowdb2['STSDEMAND'] == "Normal") {
-					$warnaD01 = "bg-teal";
-				} else {
-					$warnaD01 = "bg-teal blink_me";
-				}
-			} else if (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1")
-				and ($rowdb2['IDS'] == "2 ,0" or
-					$rowdb2['IDS'] == "0 ,2" or
-					$rowdb2['IDS'] == "2 ,2" or
-					$rowdb2['IDS'] == "2 ,3" or
-					$rowdb2['IDS'] == "3 ,2" or
-					$rowdb2['IDS'] == "2 ,2 ,3" or
-					$rowdb2['IDS'] == "2 ,0 ,0" or
-					$rowdb2['IDS'] == "2 ,2 ,0" or
-					$rowdb2['IDS'] == "0 ,0 ,2" or
-					$rowdb2['IDS'] == "0 ,2 ,0" or
-					$rowdb2['IDS'] == "0 ,2 ,2" or
-					$rowdb2['IDS'] == "0 ,2 ,0 ,0" or
-					$rowdb2['IDS'] == "2 ,2 ,0 ,2" or
-					$rowdb2['IDS'] == "2 ,2 ,0 ,0" or
-					$rowdb2['IDS'] == "3 ,2 ,0 ,2" or
-					$rowdb2['IDS'] == "2 ,3 ,0 ,3" or
-					$rowdb2['IDS'] == "2 ,2 ,3 ,0 ,2"
-				)
-			) {
-				if ($rowdb2['STSDEMAND'] == "Normal") {
-					$warnaD01 = "bg-green";
-				} else {
-					$warnaD01 = "bg-green blink_me";
-				}
-			} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and $rowdb2['LONGDESCRIPTION'] == "") {
-				if ($rowdb2['STSDEMAND'] == "Normal") {
-					$warnaD01 = "bg-orange pro";
-				} else {
-					$warnaD01 = "bg-orange pro blink_me";
-				}
-				$totHari = abs($hariPC1);
+		if (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and $rowdb2['JML'] > "0") {
+			$warnaD01 = "btn-danger";
+			$totHari = abs($hariPR);
+		} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "HOLD") {
+			if ($rowdb2['STSDEMAND'] == "Normal") {
+				$warnaD01 = "bg-black";
 			} else {
-				$warnaD01 = "btn-default";
+				$warnaD01 = "bg-black blink_me";
 			}
-			if ($rowdb2['STDRAJUT'] > 0 and ($warnaD01 == "bg-green" or $warnaD01 == "bg-green blink_me")) {
-				$est = round($kRajut / $rowdb2['STDRAJUT'], 1);
+			$totHari = abs($hariPC);
+		} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "PBS") {
+			if ($rowdb2['STSDEMAND'] == "Normal") {
+				$warnaD01 = "bg-pink";
 			} else {
-				$est = "";
+				$warnaD01 = "bg-pink blink_me";
 			}
-			if ($est == "") {
-				$hriT = $totHari;
+			$totHari = abs($hariPC);
+		} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "PBG") {
+			if ($rowdb2['STSDEMAND'] == "Normal") {
+				$warnaD01 = "bg-orange";
 			} else {
-				$hriT = $est;
+				$warnaD01 = "bg-orange blink_me";
 			}
-			echo "<font color=black>$hriT</font>";
+			$totHari = abs($hariPC);
+		} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "AMC") {
+			if ($rowdb2['STSDEMAND'] == "Normal") {
+				$warnaD01 = "bg-yellow";
+			} else {
+				$warnaD01 = "bg-yellow blink_me";
+			}
+			$totHari = abs($hariPC);
+		} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "TPB") {
+			if ($rowdb2['STSDEMAND'] == "Normal") {
+				$warnaD01 = "bg-purple";
+			} else {
+				$warnaD01 = "bg-purple blink_me";
+			}
+			$totHari = abs($hariPC);
+		} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "TST") {
+			if ($rowdb2['STSDEMAND'] == "Normal") {
+				$warnaD01 = "bg-blue";
+			} else {
+				$warnaD01 = "bg-blue blink_me";
+			}
+			$totHari = abs($hariPC);
+		} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and trim($rowdb2['PLANNEDOPERATIONCODE']) == "TTQ") {
+			if ($rowdb2['STSDEMAND'] == "Normal") {
+				$warnaD01 = "bg-gray";
+			} else {
+				$warnaD01 = "bg-gray blink_me";
+			}
+			$totHari = abs($hariPC);
+		} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and ($rowdb2['IDS'] == "3 ,3" or $rowdb2['IDS'] == "3 ,3 ,3")) {
+			if ($rowdb2['STSDEMAND'] == "Normal") {
+				$warnaD01 = "bg-teal";
+			} else {
+				$warnaD01 = "bg-teal blink_me";
+			}
+		} else if (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1")
+			and ($rowdb2['IDS'] == "2 ,0" or
+				$rowdb2['IDS'] == "0 ,2" or
+				$rowdb2['IDS'] == "2 ,2" or
+				$rowdb2['IDS'] == "2 ,3" or
+				$rowdb2['IDS'] == "3 ,2" or
+				$rowdb2['IDS'] == "2 ,2 ,3" or
+				$rowdb2['IDS'] == "2 ,0 ,0" or
+				$rowdb2['IDS'] == "2 ,2 ,0" or
+				$rowdb2['IDS'] == "0 ,0 ,2" or
+				$rowdb2['IDS'] == "0 ,2 ,0" or
+				$rowdb2['IDS'] == "0 ,2 ,2" or
+				$rowdb2['IDS'] == "0 ,2 ,0 ,0" or
+				$rowdb2['IDS'] == "2 ,2 ,0 ,2" or
+				$rowdb2['IDS'] == "2 ,2 ,0 ,0" or
+				$rowdb2['IDS'] == "3 ,2 ,0 ,2" or
+				$rowdb2['IDS'] == "2 ,3 ,0 ,3" or
+				$rowdb2['IDS'] == "2 ,2 ,3 ,0 ,2"
+			)
+		) {
+			if ($rowdb2['STSDEMAND'] == "Normal") {
+				$warnaD01 = "bg-green";
+			} else {
+				$warnaD01 = "bg-green blink_me";
+			}
+		} elseif (($rowdb2['PROGRESSSTATUS'] == "2" or $rowdb2['PROGRESSSTATUS'] == "3" or $rowdb2['STSOPR'] == "1") and $rowdb2['LONGDESCRIPTION'] == "") {
+			if ($rowdb2['STSDEMAND'] == "Normal") {
+				$warnaD01 = "bg-orange pro";
+			} else {
+				$warnaD01 = "bg-orange pro blink_me";
+			}
+			$totHari = abs($hariPC1);
+		} else {
+			$warnaD01 = "btn-default";
 		}
+		if ($rowdb2['STDRAJUT'] > 0 and ($warnaD01 == "bg-green" or $warnaD01 == "bg-green blink_me")) {
+			$est = round($kRajut / $rowdb2['STDRAJUT'], 1);
+		} else {
+			$est = "";
+		}
+		if ($est == "") {
+			$hriT = $totHari;
+		} else {
+			$hriT = $est;
+		}
+		echo "<font color=black>$hriT</font>";
+	}
 	?>
 	<?php
 	/* Total Status Mesin */
 	?>
 	<style>
-		.detail_status{
+		.detail_status {
 			width: 96%;
-			padding:0px;
-			height:60px;
+			padding: 0px;
+			height: 60px;
 		}
-		.space{
+
+		.space {
 			width: 20px;
 		}
-		.rowspan2{
-			height:52px;
+
+		.rowspan2 {
+			height: 52px;
 			align-content: center;
 		}
 	</style>
@@ -716,7 +719,7 @@ $rNews = mysqli_fetch_array($news);
 										<?php echo Kurang("RI11P002"); ?><br><br><?php waktu("RI11P002"); ?>
 									</p>
 								</span></a></td>
-                        <td><a><span class="detail_status btn <?php echo NoMesin("TF11U014"); ?>" id="TF11U014" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U014"); ?>">E14<br>
+						<td><a><span class="detail_status btn <?php echo NoMesin("TF11U014"); ?>" id="TF11U014" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TF11U014"); ?>">E14<br>
 									<p>
 										<?php echo Kurang("TF11U014"); ?><br><br><?php waktu("TF11U014"); ?>
 									</p>
@@ -1271,7 +1274,7 @@ $rNews = mysqli_fetch_array($news);
 						<td>&nbsp;</td>
 						<td></td>
 						<td>&nbsp;</td>
-                        <td><a><span class="detail_status btn <?php echo NoMesin("TT11U005"); ?>" id="TT11U005" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TT11U005"); ?>">E05<br />
+						<td><a><span class="detail_status btn <?php echo NoMesin("TT11U005"); ?>" id="TT11U005" data-toggle="tooltip" data-html="true" title="<?php echo Rajut("TT11U005"); ?>">E05<br />
 									<p>
 										<?php echo Kurang("TT11U005"); ?><br><br><?php waktu("TT11U005"); ?>
 									</p>
@@ -1321,9 +1324,9 @@ $rNews = mysqli_fetch_array($news);
 						<td>&nbsp;</td>
 						<td></td>
 						<td>&nbsp;</td>
-                        <td>&nbsp;</td>
+						<td>&nbsp;</td>
 						<td></td>
-                        <td>&nbsp;</td>
+						<td>&nbsp;</td>
 						<td></td>
 						<td>&nbsp;</td>
 						<td>&nbsp;</td>
@@ -1347,7 +1350,7 @@ $rNews = mysqli_fetch_array($news);
 						<td></td>
 						<td>&nbsp;</td>
 					</tr>
-                    <tr style="height: 0.7in;">
+					<tr style="height: 0.7in;">
 						<td></td>
 						<td></td>
 						<td></td>
@@ -1395,7 +1398,7 @@ $rNews = mysqli_fetch_array($news);
 								</span></a></td>
 						<td colspan="28">&nbsp;</td>
 					</tr>
-                    <tr>
+					<tr>
 						<td><a><span class="detail_status btn <?php echo NoMesin("ST11P019"); ?>" id="ST11P019" data-toggle="tooltip" data-html="true" data-placement="right" title="<?php echo Rajut("ST11P019"); ?>">M19<br>
 									<p>
 										<?php echo Kurang("ST11P019"); ?><br><br><?php waktu("ST11P019"); ?>
@@ -1639,7 +1642,7 @@ $rNews = mysqli_fetch_array($news);
 						<td>&nbsp;</td>
 						<td>&nbsp;</td>
 						<td>&nbsp;</td>
-					</tr> 
+					</tr>
 					<tr>
 						<td colspan="26" style="padding: 5px;">
 							<!--<marquee class="teks-berjalan" behavior="scroll" direction="left" onmouseover="this.stop();" onmouseout="this.start();" >
