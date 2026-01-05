@@ -219,7 +219,7 @@ padding: 15px 15px 0 15px;
             <ul aria-labelledby="dropdownSubMenu1" class="dropdown-menu border-0 shadow">
               <li><a href="LapOntimeDeliveryBulan" class="dropdown-item">Laporan Ontime Delivery Bulanan (PO Selesai)</a></li>
 			  <li><a href="LapPlanningSettingMesin" class="dropdown-item">Laporan Planning Setting Mesin Rajut</a></li>	
-			  <li><a href="LapProduksiBulan" class="dropdown-item">Laporan Bulanan Produksi</a></li>
+			  <!-- <li><a href="LapProduksiBulan" class="dropdown-item">Laporan Bulanan Produksi</a></li> -->
 			  <li><a href="LapInspeksiGreige" class="dropdown-item">Laporan Inspeksi Kain Greige</a></li>
 			  <li><a href="LapSummaryInspeksiGreige" class="dropdown-item">Laporan Summary Inspeksi Kain Greige</a></li>	
 			  <li><a href="LapIdentBenang" class="dropdown-item">Laporan Identifikasi Benang</a></li>
