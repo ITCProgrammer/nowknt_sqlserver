@@ -238,8 +238,8 @@ $stmt3   = db2_exec($conn1,$sqlDB23, array('cursor'=>DB2_SCROLLABLE));
 $rowdb23 = db2_fetch_assoc($stmt3);
 $kdkain=trim($rowdb23['SUBCODE02'])."".trim($rowdb23['SUBCODE03'])." ".trim($rowdb23['SUBCODE04']);	
 $McNo=$rowdb21['NO_MESIN']; 		
-$sqlKt=mysqli_query($con," SELECT no_mesin FROM tbl_mesin WHERE kd_dtex='".$McNo."' LIMIT 1");
-$rk=mysqli_fetch_array($sqlKt);	
+$sqlKt=sqlsrv_query($con," SELECT TOP 1 no_mesin FROM dbknitt.tbl_mesin WHERE kd_dtex='".$McNo."'");
+$rk=sqlsrv_fetch_array($sqlKt);	
 if($rowdb21['LONGDESCRIPTION']!=""){$uid=trim($rowdb21['LONGDESCRIPTION']);}else{$uid=trim($rowdb21['CREATIONUSER']);}	
 $sqlDB24 =" SELECT LISTAGG(TRIM(e.CODEEVENTCODE),', ') AS CODEEVENTCODE 
 FROM ELEMENTSINSPECTIONEVENT e WHERE ELEMENTSINSPECTIONELEMENTCODE ='".$rowdb21['ELEMENTCODE']."' ";	
@@ -314,102 +314,3 @@ function checkAll(form1){
     }
 }
 </script>
-<?php 
-if($_POST['mutasikain']=="MutasiKain"){
-	
-function mutasiurut(){
-include "koneksi.php";		
-$format = "20".date("ymd");
-$sql=mysqli_query($con,"SELECT no_mutasi FROM tbl_mutasi_kain WHERE substr(no_mutasi,1,8) like '%".$format."%' ORDER BY no_mutasi DESC LIMIT 1 ") or die (mysql_error());
-$d=mysqli_num_rows($sql);
-if($d>0){
-$r=mysqli_fetch_array($sql);
-$d=$r['no_mutasi'];
-$str=substr($d,8,2);
-$Urut = (int)$str;
-}else{
-$Urut = 0;
-}
-$Urut = $Urut + 1;
-$Nol="";
-$nilai=2-strlen($Urut);
-for ($i=1;$i<=$nilai;$i++){
-$Nol= $Nol."0";
-}
-$tidbr =$format.$Nol.$Urut;
-return $tidbr;
-}
-$nomid=mutasiurut();	
-
-$sql1=mysqli_query($con,"SELECT *,count(b.transid) as jmlrol,a.transid as kdtrans FROM tbl_mutasi_kain a 
-LEFT JOIN tbl_prodemand b ON a.transid=b.transid 
-WHERE isnull(a.no_mutasi) AND date_format(a.tgl_buat ,'%Y-%m-%d')='$Awal' AND a.gshift='$Gshift' 
-GROUP BY a.transid");
-$n1=1;
-$noceklist1=1;	
-while($r1=mysqli_fetch_array($sql1)){	
-	if($_POST['cek'][$n1]!='') 
-		{
-		$transid1 = $_POST['cek'][$n1];
-		mysqli_query($con,"UPDATE tbl_mutasi_kain SET
-		no_mutasi='$nomid',
-		tgl_mutasi=now()
-		WHERE transid='$transid1'
-		");
-		}else{
-			$noceklist1++;
-	}
-	$n1++;
-	}
-if($noceklist1==$n1){
-	echo "<script>
-  	$(function() {
-    const Toast = Swal.mixin({
-      toast: false,
-      position: 'middle',
-      showConfirmButton: false,
-      timer: 2000
-    });
-	Toast.fire({
-        icon: 'info',
-        title: 'Data tidak ada yang di Ceklist',
-		
-      })
-  });
-  
-</script>";	
-}else{	
-echo "<script>
-	$(function() {
-    const Toast = Swal.mixin({
-      toast: false,
-      position: 'middle',
-      showConfirmButton: true,
-      timer: 6000
-    });
-	Toast.fire({
-  title: 'Data telah di Mutasi',
-  text: 'klik OK untuk Cetak Bukti Mutasi',
-  icon: 'success',  
-}).then((result) => {
-  if (result.isConfirmed) {
-    	window.open('pages/cetak/cetak_mutasi_ulang.php?mutasi=$nomid', '_blank');
-  }
-})
-  });
-	</script>";
-	
-/*echo "<script>
-	Swal.fire({
-  title: 'Data telah di Mutasi',
-  text: 'klik OK untuk Cetak Bukti Mutasi',
-  icon: 'success',  
-}).then((result) => {
-  if (result.isConfirmed) {
-    	window.location='Mutasi';
-  }
-});
-	</script>";	*/
-}
-}
-?>
