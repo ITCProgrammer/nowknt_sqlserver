@@ -209,8 +209,8 @@ $stmt3   = db2_exec($conn1,$sqlDB23, array('cursor'=>DB2_SCROLLABLE));
 $rowdb23 = db2_fetch_assoc($stmt3);
 $kdkain=trim($rowdb23['SUBCODE02'])."".trim($rowdb23['SUBCODE03'])." ".trim($rowdb23['SUBCODE04']);	
 if($rowdb23['SCHEDULEDRESOURCECODE']!=""){ $McNo=$rowdb23['SCHEDULEDRESOURCECODE']; }else { $McNo=$rowdb21['NO_MESIN']; }		
-$sqlKt=mysqli_query($con," SELECT no_mesin FROM tbl_mesin WHERE kd_dtex='".$McNo."' LIMIT 1");
-$rk=mysqli_fetch_array($sqlKt);	
+$sqlKt=sqlsrv_query($con," SELECT TOP 1 no_mesin FROM dbknitt.tbl_mesin WHERE kd_dtex='$McNo'");
+$rk=sqlsrv_fetch_array($sqlKt);	
 if($rowdb21['LONGDESCRIPTION']!=""){$uid=trim($rowdb21['LONGDESCRIPTION']);}else{$uid=trim($rowdb21['CREATIONUSER']);}	
 $sqlDB24 =" SELECT LISTAGG(TRIM(e.CODEEVENTCODE),', ') AS CODEEVENTCODE 
 FROM ELEMENTSINSPECTIONEVENT e WHERE ELEMENTSINSPECTIONELEMENTCODE ='".$rowdb21['ELEMENTCODE']."' ";	

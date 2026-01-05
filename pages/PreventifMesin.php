@@ -228,10 +228,8 @@ if($_POST['mutasikain']=="MutasiKain"){
 function mutasiurut(){
 include "koneksi.php";		
 $format = "20".date("ymd");
-$sql=mysqli_query($con,"SELECT no_mutasi FROM tbl_mutasi_kain WHERE substr(no_mutasi,1,8) like '%".$format."%' ORDER BY no_mutasi DESC LIMIT 1 ") or die (mysql_error());
-$d=mysqli_num_rows($sql);
-if($d>0){
-$r=mysqli_fetch_array($sql);
+$sql=sqlsrv_query($con,"SELECT TOP 1 no_mutasi FROM dbknitt.tbl_mutasi_kain WHERE SUBSTRING(no_mutasi,1,8) LIKE '%".$format."%' ORDER BY no_mutasi DESC");
+if($sql && $r=sqlsrv_fetch_array($sql, SQLSRV_FETCH_ASSOC)){
 $d=$r['no_mutasi'];
 $str=substr($d,8,2);
 $Urut = (int)$str;

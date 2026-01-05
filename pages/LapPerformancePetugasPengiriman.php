@@ -1,23 +1,26 @@
 <?php
 require_once "koneksi.php";
-mysqli_query($con_nowprd, "DELETE FROM performpetugaspengiriman WHERE CREATEDATETIME BETWEEN NOW() - INTERVAL 3 DAY AND NOW() - INTERVAL 1 DAY");
-mysqli_query($con_nowprd, "DELETE FROM performpetugaspengiriman WHERE IPADDRESS = '$_SERVER[REMOTE_ADDR]'"); 
+sqlsrv_query($con_nowprd, "DELETE FROM nowprd.performpetugaspengiriman WHERE CREATEDATETIME BETWEEN DATEADD(day, -3, GETDATE()) AND DATEADD(day, -1, GETDATE())");
+sqlsrv_query($con_nowprd, "DELETE FROM nowprd.performpetugaspengiriman WHERE IPADDRESS = '$_SERVER[REMOTE_ADDR]'"); 
 
 $Awal  = isset($_POST['tgl_awal']) ? $_POST['tgl_awal'] : '';
 $Akhir  = isset($_POST['tgl_akhir']) ? $_POST['tgl_akhir'] : '';
 
-function KPI($kd, $jns)
+function KPI($con_nowprd,$kd, $jns)
 {
-  ini_set("error_reporting", 1);
-  require_once "koneksi.php";
-  $con_nowprd=mysqli_connect("10.0.0.10","dit","4dm1n","nowprd"); // Nanti pindahkan tarikan datanya ke DB2 saja
-  $stmt0   = mysqli_query($con_nowprd, "SELECT * FROM usergenericgroup WHERE USERGENERICGROUPTYPECODE = 'OPK' AND CODE = '$kd'");
-  $rowdb20 = mysqli_fetch_assoc($stmt0);
+  // ini_set("error_reporting", 1);
+  // require_once "koneksi.php";
+  //$con_nowprd=mysqli_connect("10.0.0.10","dit","4dm1n","nowprd"); // Nanti pindahkan tarikan datanya ke DB2 saja
+  // $connectionInfo = array("Database"=>"nowprd", "UID"=>"dit", "PWD"=>"4dm1n");
+  // $con_nowprd = sqlsrv_connect("10.0.0.10", $connectionInfo);
+  $stmt0   = sqlsrv_query($con_nowprd, "SELECT * FROM nowprd.usergenericgroup WHERE USERGENERICGROUPTYPECODE = 'OPK' AND CODE = '$kd'");
+  $rowdb20 = sqlsrv_fetch_array($stmt0, SQLSRV_FETCH_ASSOC);
   if ($jns == "ROL") {
     return $rowdb20['SHORTDESCRIPTION'];
   } else if ($jns == "PALET") {
     return $rowdb20['SEARCHDESCRIPTION'];
   }
+  // return $kd.' '.$jns;
 }
 ?>
 <!-- Main content -->
@@ -291,103 +294,132 @@ GROUP BY
                                                     ."'".date('Y-m-d H:i:s')."')";
               }
               $value_performpetugaspengiriman        = implode(',', $r_performpetugaspengiriman);
-              $insert_performpetugaspengiriman       = mysqli_query($con_nowprd, "INSERT INTO performpetugaspengiriman(DATE1,DATE2,NAMA,KO1,KO1P,KO2,KO2P,KO3,KO3P,KO4,KO4P,KS1,KS1P,KS2,KS2P,KS3,KS3P,KS4,KS4P,KS5,KS5P,KT1,KT1P,KT2,KT2P,KT3,KT3P,KT4,KT4P,KT5,KT5P,QK,IPADDRESS,CREATEDATETIME) VALUES $value_performpetugaspengiriman");
+                            // 1. Simpan query ke variabel string dulu (PENTING untuk debugging)
+              $sql = "INSERT INTO nowprd.performpetugaspengiriman(DATE1,DATE2,NAMA,KO1,KO1P,KO2,KO2P,KO3,KO3P,KO4,KO4P,KS1,KS1P,KS2,KS2P,KS3,KS3P,KS4,KS4P,KS5,KS5P,KT1,KT1P,KT2,KT2P,KT3,KT3P,KT4,KT4P,KT5,KT5P,QK,IPADDRESS,CREATEDATETIME) VALUES $value_performpetugaspengiriman";
 
-              $sqlDB2 = "SELECT DISTINCT * FROM performpetugaspengiriman WHERE DATE1 = '$_POST[tgl_awal]' AND DATE2 = '$_POST[tgl_akhir]' AND IPADDRESS = '$_SERVER[REMOTE_ADDR]' ORDER BY NAMA ASC";
-              $stmt   = mysqli_query($con_nowprd,$sqlDB2);
-              while ($rowdb21 = mysqli_fetch_array($stmt)) {
+              // 2. Eksekusi Query
+              $insert_performpetugaspengiriman = sqlsrv_query($con_nowprd, $sql);
+
+              // 3. Validasi Error
+              if ($insert_performpetugaspengiriman === false) {
+                  // Ambil detail error dari driver SQL Server
+                  $errors = sqlsrv_errors();
+                  
+                  echo "<div style='background-color: #f8d7da; color: #721c24; padding: 10px; border: 1px solid #f5c6cb; margin-bottom: 20px;'>";
+                  echo "<h3>❌ Gagal Insert Data</h3>";
+                  
+                  if ($errors != null) {
+                      echo "<b>Detail Error:</b><br>";
+                      foreach ($errors as $error) {
+                          echo "SQLSTATE: " . $error['SQLSTATE'] . "<br />";
+                          echo "Code: " . $error['code'] . "<br />";
+                          echo "Message: " . $error['message'] . "<br /><hr>";
+                      }
+                  }
+
+                  echo "<b>Cek Query SQL Anda (Copy paste ini ke SQL Server Management Studio untuk test):</b><br>";
+                  echo "<textarea style='width:100%; height:100px;'>" . $sql . "</textarea>";
+                  echo "</div>";
+                  
+                  // Hentikan script supaya error terlihat (opsional)
+                  die(); 
+              }
+
+              $sqlDB2 = "SELECT DISTINCT * FROM nowprd.performpetugaspengiriman WHERE DATE1 = '$_POST[tgl_awal]' AND DATE2 = '$_POST[tgl_akhir]' AND IPADDRESS = '$_SERVER[REMOTE_ADDR]' ORDER BY NAMA ASC";
+              $stmt   = sqlsrv_query($con_nowprd,$sqlDB2);
+              while ($rowdb21 = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
             ?>
             <tr>
               <td style="text-align: center"><?php echo $no; ?></td>
               <td style="text-align: center"><?php echo $rowdb21['NAMA']; ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KO1P']; ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KO1']; ?></td>
-              <td style="text-align: center"><?php echo (KPI("KO1", "PALET") * $rowdb21['KO1P']) + (KPI("KO1", "ROL") * $rowdb21['KO1']); ?></td>
+              <td style="text-align: center"><?php echo (KPI($con_nowprd,"KO1", "PALET") * $rowdb21['KO1P']) + (KPI($con_nowprd,"KO1", "ROL") * $rowdb21['KO1']); ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KO2P']; ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KO2']; ?></td>
-              <td style="text-align: center"><?php echo (KPI("KO2", "PALET") * $rowdb21['KO2P']) + (KPI("KO2", "ROL") * $rowdb21['KO2']); ?></td>
+              <td style="text-align: center"><?php echo (KPI($con_nowprd,"KO2", "PALET") * $rowdb21['KO2P']) + (KPI($con_nowprd,"KO2", "ROL") * $rowdb21['KO2']); ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KO3P']; ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KO3']; ?></td>
-              <td style="text-align: center"><?php echo (KPI("KO3", "PALET") * $rowdb21['KO3P']) + (KPI("KO3", "ROL") * $rowdb21['KO3']); ?></td>
+              <td style="text-align: center"><?php echo (KPI($con_nowprd,"KO3", "PALET") * $rowdb21['KO3P']) + (KPI($con_nowprd,"KO3", "ROL") * $rowdb21['KO3']); ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KO4P']; ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KO4']; ?></td>
-              <td style="text-align: center"><?php echo (KPI("KO4", "PALET") * $rowdb21['KO4P']) + (KPI("KO4", "ROL") * $rowdb21['KO4']); ?></td>
+              <td style="text-align: center"><?php echo (KPI($con_nowprd,"KO4", "PALET") * $rowdb21['KO4P']) + (KPI($con_nowprd,"KO4", "ROL") * $rowdb21['KO4']); ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KT1P']; ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KT1']; ?></td>
-              <td style="text-align: center"><?php echo (KPI("KT1", "PALET") * $rowdb21['KT1P']) + (KPI("KT1", "ROL") * $rowdb21['KT1']); ?></td>
+              <td style="text-align: center"><?php echo (KPI($con_nowprd,"KT1", "PALET") * $rowdb21['KT1P']) + (KPI($con_nowprd,"KT1", "ROL") * $rowdb21['KT1']); ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KT2P']; ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KT2']; ?></td>
-              <td style="text-align: center"><?php echo (KPI("KT2", "PALET") * $rowdb21['KT2P']) + (KPI("KT2", "ROL") * $rowdb21['KT2']); ?></td>
+              <td style="text-align: center"><?php echo (KPI($con_nowprd,"KT2", "PALET") * $rowdb21['KT2P']) + (KPI($con_nowprd,"KT2", "ROL") * $rowdb21['KT2']); ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KT3P']; ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KT3']; ?></td>
-              <td style="text-align: center"><?php echo (KPI("KT3", "PALET") * $rowdb21['KT3P']) + (KPI("KT3", "ROL") * $rowdb21['KT3']); ?></td>
+              <td style="text-align: center"><?php echo (KPI($con_nowprd,"KT3", "PALET") * $rowdb21['KT3P']) + (KPI($con_nowprd,"KT3", "ROL") * $rowdb21['KT3']); ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KT4P']; ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KT4']; ?></td>
-              <td style="text-align: center"><?php echo (KPI("KT4", "PALET") * $rowdb21['KT4P']) + (KPI("KT4", "ROL") * $rowdb21['KT4']); ?></td>
+              <td style="text-align: center"><?php echo (KPI($con_nowprd,"KT4", "PALET") * $rowdb21['KT4P']) + (KPI($con_nowprd,"KT4", "ROL") * $rowdb21['KT4']); ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KT5P']; ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KT5']; ?></td>
-              <td style="text-align: center"><?php echo (KPI("KT5", "PALET") * $rowdb21['KT5P']) + (KPI("KT5", "ROL") * $rowdb21['KT5']); ?></td>
+              <td style="text-align: center"><?php echo (KPI($con_nowprd,"KT5", "PALET") * $rowdb21['KT5P']) + (KPI($con_nowprd,"KT5", "ROL") * $rowdb21['KT5']); ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KS1P']; ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KS1']; ?></td>
-              <td style="text-align: center"><?php echo (KPI("KS1", "PALET") * $rowdb21['KS1P']) + (KPI("KS1", "ROL") * $rowdb21['KS1']); ?></td>
+              <td style="text-align: center"><?php echo (KPI($con_nowprd,"KS1", "PALET") * $rowdb21['KS1P']) + (KPI($con_nowprd,"KS1", "ROL") * $rowdb21['KS1']); ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KS2P']; ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KS2']; ?></td>
-              <td style="text-align: center"><?php echo (KPI("KS2", "PALET") * $rowdb21['KS2P']) + (KPI("KS2", "ROL") * $rowdb21['KS2']); ?></td>
+              <td style="text-align: center"><?php echo (KPI($con_nowprd,"KS2", "PALET") * $rowdb21['KS2P']) + (KPI($con_nowprd,"KS2", "ROL") * $rowdb21['KS2']); ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KS3P']; ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KS3']; ?></td>
-              <td style="text-align: center"><?php echo (KPI("KS3", "PALET") * $rowdb21['KS3P']) + (KPI("KS3", "ROL") * $rowdb21['KS3']); ?></td>
+              <td style="text-align: center"><?php echo (KPI($con_nowprd,"KS3", "PALET") * $rowdb21['KS3P']) + (KPI($con_nowprd,"KS3", "ROL") * $rowdb21['KS3']); ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KS4P']; ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KS4']; ?></td>
-              <td style="text-align: center"><?php echo (KPI("KS4", "PALET") * $rowdb21['KS4P']) + (KPI("KS4", "ROL") * $rowdb21['KS4']); ?></td>
+              <td style="text-align: center"><?php echo (KPI($con_nowprd,"KS4", "PALET") * $rowdb21['KS4P']) + (KPI($con_nowprd,"KS4", "ROL") * $rowdb21['KS4']); ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KS5P']; ?></td>
               <td style="text-align: center"><?php echo $rowdb21['KS5']; ?></td>
-              <td style="text-align: center"><?php echo (KPI("KS5", "PALET") * $rowdb21['KS5P']) + (KPI("KS5", "ROL") * $rowdb21['KS5']); ?></td>
+              <td style="text-align: center"><?php echo (KPI($con_nowprd,"KS5", "PALET") * $rowdb21['KS5P']) + (KPI($con_nowprd,"KS5", "ROL") * $rowdb21['KS5']); ?></td>
               <td style="text-align: center"><?php echo $rowdb21['QK']; ?></td>
-              <td style="text-align: center"><?php echo (KPI("QK", "ROL") * $rowdb21['QK']); ?></td>
+              <td style="text-align: center"><?php echo (KPI($con_nowprd,"QK", "ROL") * $rowdb21['QK']); ?></td>
               <td style="text-align: center"><?php
 echo
-    ((KPI("KO1", "PALET") * $rowdb21['KO1P']) + (KPI("KO1", "ROL") * $rowdb21['KO1'])) +
-    ((KPI("KO2", "PALET") * $rowdb21['KO2P']) + (KPI("KO2", "ROL") * $rowdb21['KO2'])) +
-    ((KPI("KO3", "PALET") * $rowdb21['KO3P']) + (KPI("KO3", "ROL") * $rowdb21['KO3'])) +
-    ((KPI("KO4", "PALET") * $rowdb21['KO4P']) + (KPI("KO4", "ROL") * $rowdb21['KO4'])) +
+    ((KPI($con_nowprd,"KO1", "PALET") * $rowdb21['KO1P']) + (KPI($con_nowprd,"KO1", "ROL") * $rowdb21['KO1'])) +
+    ((KPI($con_nowprd,"KO2", "PALET") * $rowdb21['KO2P']) + (KPI($con_nowprd,"KO2", "ROL") * $rowdb21['KO2'])) +
+    ((KPI($con_nowprd,"KO3", "PALET") * $rowdb21['KO3P']) + (KPI($con_nowprd,"KO3", "ROL") * $rowdb21['KO3'])) +
+    ((KPI($con_nowprd,"KO4", "PALET") * $rowdb21['KO4P']) + (KPI($con_nowprd,"KO4", "ROL") * $rowdb21['KO4'])) +
 
-    ((KPI("KT1", "PALET") * $rowdb21['KT1P']) + (KPI("KT1", "ROL") * $rowdb21['KT1'])) +
-    ((KPI("KT2", "PALET") * $rowdb21['KT2P']) + (KPI("KT2", "ROL") * $rowdb21['KT2'])) +
-    ((KPI("KT3", "PALET") * $rowdb21['KT3P']) + (KPI("KT3", "ROL") * $rowdb21['KT3'])) +
-    ((KPI("KT4", "PALET") * $rowdb21['KT4P']) + (KPI("KT4", "ROL") * $rowdb21['KT4'])) +
-    ((KPI("KT5", "PALET") * $rowdb21['KT5P']) + (KPI("KT5", "ROL") * $rowdb21['KT5'])) +
+    ((KPI($con_nowprd,"KT1", "PALET") * $rowdb21['KT1P']) + (KPI($con_nowprd,"KT1", "ROL") * $rowdb21['KT1'])) +
+    ((KPI($con_nowprd,"KT2", "PALET") * $rowdb21['KT2P']) + (KPI($con_nowprd,"KT2", "ROL") * $rowdb21['KT2'])) +
+    ((KPI($con_nowprd,"KT3", "PALET") * $rowdb21['KT3P']) + (KPI($con_nowprd,"KT3", "ROL") * $rowdb21['KT3'])) +
+    ((KPI($con_nowprd,"KT4", "PALET") * $rowdb21['KT4P']) + (KPI($con_nowprd,"KT4", "ROL") * $rowdb21['KT4'])) +
+    ((KPI($con_nowprd,"KT5", "PALET") * $rowdb21['KT5P']) + (KPI($con_nowprd,"KT5", "ROL") * $rowdb21['KT5'])) +
 
-    ((KPI("KS1", "PALET") * $rowdb21['KS1P']) + (KPI("KS1", "ROL") * $rowdb21['KS1'])) +
-    ((KPI("KS2", "PALET") * $rowdb21['KS2P']) + (KPI("KS2", "ROL") * $rowdb21['KS2'])) +
-    ((KPI("KS3", "PALET") * $rowdb21['KS3P']) + (KPI("KS3", "ROL") * $rowdb21['KS3'])) +
-    ((KPI("KS4", "PALET") * $rowdb21['KS4P']) + (KPI("KS4", "ROL") * $rowdb21['KS4'])) +
-    ((KPI("KS5", "PALET") * $rowdb21['KS5P']) + (KPI("KS5", "ROL") * $rowdb21['KS5'])) +
+    ((KPI($con_nowprd,"KS1", "PALET") * $rowdb21['KS1P']) + (KPI($con_nowprd,"KS1", "ROL") * $rowdb21['KS1'])) +
+    ((KPI($con_nowprd,"KS2", "PALET") * $rowdb21['KS2P']) + (KPI($con_nowprd,"KS2", "ROL") * $rowdb21['KS2'])) +
+    ((KPI($con_nowprd,"KS3", "PALET") * $rowdb21['KS3P']) + (KPI($con_nowprd,"KS3", "ROL") * $rowdb21['KS3'])) +
+    ((KPI($con_nowprd,"KS4", "PALET") * $rowdb21['KS4P']) + (KPI($con_nowprd,"KS4", "ROL") * $rowdb21['KS4'])) +
+    ((KPI($con_nowprd,"KS5", "PALET") * $rowdb21['KS5P']) + (KPI($con_nowprd,"KS5", "ROL") * $rowdb21['KS5'])) +
 
-    (KPI("QK", "ROL") * $rowdb21['QK']);
+    (KPI($con_nowprd,"QK", "ROL") * $rowdb21['QK']);
 ?></td>
               <td><span style="text-align: center"><?php
 echo round(
     (
         (
             (
-                ((KPI("KO1", "PALET") * $rowdb21['KO1P']) + (KPI("KO1", "ROL") * $rowdb21['KO1'])) +
-                ((KPI("KO2", "PALET") * $rowdb21['KO2P']) + (KPI("KO2", "ROL") * $rowdb21['KO2'])) +
-                ((KPI("KO3", "PALET") * $rowdb21['KO3P']) + (KPI("KO3", "ROL") * $rowdb21['KO3'])) +
-                ((KPI("KO4", "PALET") * $rowdb21['KO4P']) + (KPI("KO4", "ROL") * $rowdb21['KO4'])) +
+                ((KPI($con_nowprd,"KO1", "PALET") * $rowdb21['KO1P']) + (KPI($con_nowprd,"KO1", "ROL") * $rowdb21['KO1'])) +
+                ((KPI($con_nowprd,"KO2", "PALET") * $rowdb21['KO2P']) + (KPI($con_nowprd,"KO2", "ROL") * $rowdb21['KO2'])) +
+                ((KPI($con_nowprd,"KO3", "PALET") * $rowdb21['KO3P']) + (KPI($con_nowprd,"KO3", "ROL") * $rowdb21['KO3'])) +
+                ((KPI($con_nowprd,"KO4", "PALET") * $rowdb21['KO4P']) + (KPI($con_nowprd,"KO4", "ROL") * $rowdb21['KO4'])) +
 
-                ((KPI("KT1", "PALET") * $rowdb21['KT1P']) + (KPI("KT1", "ROL") * $rowdb21['KT1'])) +
-                ((KPI("KT2", "PALET") * $rowdb21['KT2P']) + (KPI("KT2", "ROL") * $rowdb21['KT2'])) +
-                ((KPI("KT3", "PALET") * $rowdb21['KT3P']) + (KPI("KT3", "ROL") * $rowdb21['KT3'])) +
-                ((KPI("KT4", "PALET") * $rowdb21['KT4P']) + (KPI("KT4", "ROL") * $rowdb21['KT4'])) +
-                ((KPI("KT5", "PALET") * $rowdb21['KT5P']) + (KPI("KT5", "ROL") * $rowdb21['KT5'])) +
+                ((KPI($con_nowprd,"KT1", "PALET") * $rowdb21['KT1P']) + (KPI($con_nowprd,"KT1", "ROL") * $rowdb21['KT1'])) +
+                ((KPI($con_nowprd,"KT2", "PALET") * $rowdb21['KT2P']) + (KPI($con_nowprd,"KT2", "ROL") * $rowdb21['KT2'])) +
+                ((KPI($con_nowprd,"KT3", "PALET") * $rowdb21['KT3P']) + (KPI($con_nowprd,"KT3", "ROL") * $rowdb21['KT3'])) +
+                ((KPI($con_nowprd,"KT4", "PALET") * $rowdb21['KT4P']) + (KPI($con_nowprd,"KT4", "ROL") * $rowdb21['KT4'])) +
+                ((KPI($con_nowprd,"KT5", "PALET") * $rowdb21['KT5P']) + (KPI($con_nowprd,"KT5", "ROL") * $rowdb21['KT5'])) +
 
-                ((KPI("KS1", "PALET") * $rowdb21['KS1P']) + (KPI("KS1", "ROL") * $rowdb21['KS1'])) +
-                ((KPI("KS2", "PALET") * $rowdb21['KS2P']) + (KPI("KS2", "ROL") * $rowdb21['KS2'])) +
-                ((KPI("KS3", "PALET") * $rowdb21['KS3P']) + (KPI("KS3", "ROL") * $rowdb21['KS3'])) +
-                ((KPI("KS4", "PALET") * $rowdb21['KS4P']) + (KPI("KS4", "ROL") * $rowdb21['KS4'])) +
-                ((KPI("KS5", "PALET") * $rowdb21['KS5P']) + (KPI("KS5", "ROL") * $rowdb21['KS5'])) +
+                ((KPI($con_nowprd,"KS1", "PALET") * $rowdb21['KS1P']) + (KPI($con_nowprd,"KS1", "ROL") * $rowdb21['KS1'])) +
+                ((KPI($con_nowprd,"KS2", "PALET") * $rowdb21['KS2P']) + (KPI($con_nowprd,"KS2", "ROL") * $rowdb21['KS2'])) +
+                ((KPI($con_nowprd,"KS3", "PALET") * $rowdb21['KS3P']) + (KPI($con_nowprd,"KS3", "ROL") * $rowdb21['KS3'])) +
+                ((KPI($con_nowprd,"KS4", "PALET") * $rowdb21['KS4P']) + (KPI($con_nowprd,"KS4", "ROL") * $rowdb21['KS4'])) +
+                ((KPI($con_nowprd,"KS5", "PALET") * $rowdb21['KS5P']) + (KPI($con_nowprd,"KS5", "ROL") * $rowdb21['KS5'])) +
 
-                (KPI("QK", "ROL") * $rowdb21['QK'])
+                (KPI($con_nowprd,"QK", "ROL") * $rowdb21['QK'])
             ) / 420
         ) * 100
     )
@@ -447,10 +479,8 @@ if ($_POST['mutasikain'] == "MutasiKain") {
   {
     require_once "koneksi.php";
     $format = "20" . date("ymd");
-    $sql = mysqli_query($con, "SELECT no_mutasi FROM tbl_mutasi_kain WHERE substr(no_mutasi,1,8) like '%" . $format . "%' ORDER BY no_mutasi DESC LIMIT 1 ") or die(mysql_error());
-    $d = mysqli_num_rows($sql);
-    if ($d > 0) {
-      $r = mysqli_fetch_array($sql);
+    $sql = sqlsrv_query($con, "SELECT TOP 1 no_mutasi FROM dbknitt.tbl_mutasi_kain WHERE SUBSTRING(no_mutasi,1,8) LIKE '%" . $format . "%' ORDER BY no_mutasi DESC");
+    if ($sql && $r = sqlsrv_fetch_array($sql, SQLSRV_FETCH_ASSOC)) {
       $d = $r['no_mutasi'];
       $str = substr($d, 8, 2);
       $Urut = (int)$str;
@@ -468,18 +498,18 @@ if ($_POST['mutasikain'] == "MutasiKain") {
   }
   $nomid = mutasiurut();
 
-  $sql1 = mysqli_query($con, "SELECT *,count(b.transid) as jmlrol,a.transid as kdtrans FROM tbl_mutasi_kain a 
-                          LEFT JOIN tbl_prodemand b ON a.transid=b.transid 
-                          WHERE isnull(a.no_mutasi) AND date_format(a.tgl_buat ,'%Y-%m-%d')='$Awal' AND a.gshift='$Gshift' 
+  $sql1 = sqlsrv_query($con, "SELECT a.transid as kdtrans, count(b.transid) as jmlrol FROM dbknitt.tbl_mutasi_kain a 
+                          LEFT JOIN dbknitt.tbl_prodemand b ON a.transid=b.transid 
+                          WHERE a.no_mutasi IS NULL AND CONVERT(date, a.tgl_buat)='$Awal' AND a.gshift='$Gshift' 
                           GROUP BY a.transid");
   $n1 = 1;
   $noceklist1 = 1;
-  while ($r1 = mysqli_fetch_array($sql1)) {
+  while ($r1 = sqlsrv_fetch_array($sql1, SQLSRV_FETCH_ASSOC)) {
     if ($_POST['cek'][$n1] != '') {
       $transid1 = $_POST['cek'][$n1];
-      mysqli_query($con, "UPDATE tbl_mutasi_kain SET
+      sqlsrv_query($con, "UPDATE dbknitt.tbl_mutasi_kain SET
 		no_mutasi='$nomid',
-		tgl_mutasi=now()
+		tgl_mutasi=GETDATE()
 		WHERE transid='$transid1'
 		");
     } else {

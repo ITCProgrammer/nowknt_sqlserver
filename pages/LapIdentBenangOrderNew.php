@@ -246,13 +246,13 @@ i.LEGALNAME1,i.SUBCODE02,i.SUBCODE03,i.SUBCODE04,i.PROJECTCODE,i.PRODUCTIONORDER
 $stmtIN   = db2_exec($conn1,$sqlDB2IN, array('cursor'=>DB2_SCROLLABLE));	 
 $rowdb2IN = db2_fetch_assoc($stmtIN);
 	 $ord=$rowdb22G['ORDERCODE'];
-	 $sql=mysqli_query($con," SELECT sum(berat_awal) as berat_awal FROM tbl_inspeksi_detail_now tidn WHERE tidn.demandno='$rowdb22G[ORDERCODE]' and tidn.ket_bs ='BS Mekanik'");
-	 $rowd=mysqli_fetch_array($sql);
-	 $sql1=mysqli_query($con," SELECT sum(berat_awal) as berat_awal FROM tbl_inspeksi_detail_now tidn WHERE tidn.demandno='$rowdb22G[ORDERCODE]' and tidn.ket_bs ='BS Produksi'");
-	 $rowd1=mysqli_fetch_array($sql1);
-	 $sql2=mysqli_query($con," SELECT sum(berat_awal) as berat_awal FROM tbl_inspeksi_detail_now tidn 
+	 $sql=sqlsrv_query($con," SELECT SUM(berat_awal) as berat_awal FROM dbknitt.tbl_inspeksi_detail_now tidn WHERE tidn.demandno='$rowdb22G[ORDERCODE]' and tidn.ket_bs ='BS Mekanik'");
+	 $rowd=sqlsrv_fetch_array($sql);
+	 $sql1=sqlsrv_query($con," SELECT SUM(berat_awal) as berat_awal FROM dbknitt.tbl_inspeksi_detail_now tidn WHERE tidn.demandno='$rowdb22G[ORDERCODE]' and tidn.ket_bs ='BS Produksi'");
+	 $rowd1=sqlsrv_fetch_array($sql1);
+	 $sql2=sqlsrv_query($con," SELECT SUM(berat_awal) as berat_awal FROM dbknitt.tbl_inspeksi_detail_now tidn 
 	 WHERE tidn.demandno='$rowdb22G[ORDERCODE]' and tidn.ket_bs ='BS Lain-lain'");
-	 $rowd2=mysqli_fetch_array($sql2);
+	 $rowd2=sqlsrv_fetch_array($sql2);
 	 if($rowdb2IN['INSKG']>0){
 	 $prsn=round(($rowd['berat_awal']/$rowdb2IN['INSKG'])*100,2);
 	 $prsn1=round(($rowd1['berat_awal']/$rowdb2IN['INSKG'])*100,2);
@@ -460,25 +460,25 @@ ORDER BY PROGRESSSTATUS ASC
 	 }
 	 
 	 if($stsgabung!=""){
-	 $sql=mysqli_query($con," SELECT sum(berat_awal) as berat_awal  FROM tbl_inspeksi_detail_now tidn WHERE tidn.prod_oder='$rowdb2[PRODUCTIONORDERCODE]' and tidn.ket_bs ='BS Mekanik'");
+	 $sql=sqlsrv_query($con," SELECT sum(berat_awal) as berat_awal  FROM dbknitt.tbl_inspeksi_detail_now tidn WHERE tidn.prod_oder='$rowdb2[PRODUCTIONORDERCODE]' and tidn.ket_bs ='BS Mekanik'");
 	 }else{
-	 $sql=mysqli_query($con," SELECT sum(berat_awal) as berat_awal  FROM tbl_inspeksi_detail_now tidn WHERE tidn.demandno='$rowdb2[PRODUCTIONDEMANDCODE]' and tidn.ket_bs ='BS Mekanik'");	 
+	 $sql=sqlsrv_query($con," SELECT sum(berat_awal) as berat_awal  FROM dbknitt.tbl_inspeksi_detail_now tidn WHERE tidn.demandno='$rowdb2[PRODUCTIONDEMANDCODE]' and tidn.ket_bs ='BS Mekanik'");	 
 	 }	 
-	 $rowd=mysqli_fetch_array($sql);
+	 $rowd=sqlsrv_fetch_array($sql);
 	 if($stsgabung!=""){
-	 $sql1=mysqli_query($con," SELECT sum(berat_awal) as berat_awal FROM tbl_inspeksi_detail_now tidn WHERE tidn.prod_oder='$rowdb2[PRODUCTIONORDERCODE]' and tidn.ket_bs ='BS Produksi'");
+	 $sql1=sqlsrv_query($con," SELECT sum(berat_awal) as berat_awal FROM dbknitt.tbl_inspeksi_detail_now tidn WHERE tidn.prod_oder='$rowdb2[PRODUCTIONORDERCODE]' and tidn.ket_bs ='BS Produksi'");
 	 }else{
-	 $sql1=mysqli_query($con," SELECT sum(berat_awal) as berat_awal FROM tbl_inspeksi_detail_now tidn WHERE tidn.demandno='$rowdb2[PRODUCTIONDEMANDCODE]' and tidn.ket_bs ='BS Produksi'");	 
+	 $sql1=sqlsrv_query($con," SELECT sum(berat_awal) as berat_awal FROM dbknitt.tbl_inspeksi_detail_now tidn WHERE tidn.demandno='$rowdb2[PRODUCTIONDEMANDCODE]' and tidn.ket_bs ='BS Produksi'");	 
 	 }
-	 $rowd1=mysqli_fetch_array($sql1);
+	 $rowd1=sqlsrv_fetch_array($sql1);
 	 if($stsgabung!=""){
-	 $sql2=mysqli_query($con," SELECT sum(berat_awal) as berat_awal FROM tbl_inspeksi_detail_now tidn 
+	 $sql2=sqlsrv_query($con," SELECT sum(berat_awal) as berat_awal FROM dbknitt.tbl_inspeksi_detail_now tidn 
 	 WHERE tidn.prod_oder='$rowdb2[PRODUCTIONORDERCODE]' and tidn.ket_bs ='BS Lain-lain'");
 	  }else{
-	 $sql2=mysqli_query($con," SELECT sum(berat_awal) as berat_awal FROM tbl_inspeksi_detail_now tidn 
+	 $sql2=sqlsrv_query($con," SELECT sum(berat_awal) as berat_awal FROM dbknitt.tbl_inspeksi_detail_now tidn 
 	 WHERE tidn.demandno='$rowdb2[PRODUCTIONDEMANDCODE]' and tidn.ket_bs ='BS Lain-lain'");
 	 }	 
-	 $rowd2=mysqli_fetch_array($sql2);
+	 $rowd2=sqlsrv_fetch_array($sql2);
 	 if(($rowdb21['KGPAKAI']-$rowdb22['KGSISA'])>0){
 	 $prsn=round(($rowd['berat_awal']/($rowdb21['KGPAKAI']-$rowdb22['KGSISA']))*100,2);
 	 $prsn1=round(($rowd1['berat_awal']/($rowdb21['KGPAKAI']-$rowdb22['KGSISA']))*100,2);
@@ -688,8 +688,8 @@ $sqlDB22PROPB =" SELECT ITXVIEWKK.PROJECTCODE,ITXVIEWKK.ORIGDLVSALORDLINESALORDE
 $stmt2PROPB   = db2_exec($conn1,$sqlDB22PROPB, array('cursor'=>DB2_SCROLLABLE));
 $rowdb22PROPB = db2_fetch_assoc($stmt2PROPB);
 		
-$sqlKtPB=mysqli_query($con," SELECT no_mesin FROM tbl_mesin WHERE kd_dtex='".$msinPB."' LIMIT 1");
-$rkPB=mysqli_fetch_array($sqlKtPB);
+$sqlKtPB=sqlsrv_query($con," SELECT no_mesin FROM tbl_mesin WHERE kd_dtex='".$msinPB."' LIMIT 1");
+$rkPB=sqlsrv_fetch_array($sqlKtPB);
 ?>
 	  <tr>
 	  <td style="text-align: center"><?php echo $rowdb21PB['TRANSACTIONNUMBER']; ?></td>
@@ -839,8 +839,8 @@ if($rowdb22['TRANSACTIONTIME']>="07:00:00" and $rowdb22['TRANSACTIONTIME']<="15:
 	$shf="3";
 }		
 $msin = $rowdb21['NOMC']; 		
-$sqlKt=mysqli_query($con," SELECT no_mesin FROM tbl_mesin WHERE kd_dtex='".$msin."' LIMIT 1");
-$rk=mysqli_fetch_array($sqlKt);	
+$sqlKt=sqlsrv_query($con," SELECT no_mesin FROM tbl_mesin WHERE kd_dtex='".$msin."' LIMIT 1");
+$rk=sqlsrv_fetch_array($sqlKt);	
 if($rowdb21['LONGDESCRIPTION']!=""){$uid=trim($rowdb21['LONGDESCRIPTION']);}else{$uid=trim($rowdb21['CREATIONUSER']);}	
 
 
@@ -1160,10 +1160,10 @@ if($_POST['mutasikain']=="MutasiKain"){
 function mutasiurut(){
 include "koneksi.php";		
 $format = "20".date("ymd");
-$sql=mysqli_query($con,"SELECT no_mutasi FROM tbl_mutasi_kain WHERE substr(no_mutasi,1,8) like '%".$format."%' ORDER BY no_mutasi DESC LIMIT 1 ") or die (mysql_error());
-$d=mysqli_num_rows($sql);
+$sql=sqlsrv_query($con,"SELECT no_mutasi FROM tbl_mutasi_kain WHERE substr(no_mutasi,1,8) like '%".$format."%' ORDER BY no_mutasi DESC LIMIT 1 ");
+$d=sqlsrv_num_rows($sql);
 if($d>0){
-$r=mysqli_fetch_array($sql);
+$r=sqlsrv_fetch_array($sql);
 $d=$r['no_mutasi'];
 $str=substr($d,8,2);
 $Urut = (int)$str;
@@ -1181,17 +1181,17 @@ return $tidbr;
 }
 $nomid=mutasiurut();	
 
-$sql1=mysqli_query($con,"SELECT *,count(b.transid) as jmlrol,a.transid as kdtrans FROM tbl_mutasi_kain a 
+$sql1=sqlsrv_query($con,"SELECT *,count(b.transid) as jmlrol,a.transid as kdtrans FROM tbl_mutasi_kain a 
 LEFT JOIN tbl_prodemand b ON a.transid=b.transid 
 WHERE isnull(a.no_mutasi) AND date_format(a.tgl_buat ,'%Y-%m-%d')='$Awal' AND a.gshift='$Gshift' 
 GROUP BY a.transid");
 $n1=1;
 $noceklist1=1;	
-while($r1=mysqli_fetch_array($sql1)){	
+while($r1=sqlsrv_fetch_array($sql1)){	
 	if($_POST['cek'][$n1]!='') 
 		{
 		$transid1 = $_POST['cek'][$n1];
-		mysqli_query($con,"UPDATE tbl_mutasi_kain SET
+		sqlsrv_query($con,"UPDATE tbl_mutasi_kain SET
 		no_mutasi='$nomid',
 		tgl_mutasi=now()
 		WHERE transid='$transid1'

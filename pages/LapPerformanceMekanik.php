@@ -95,8 +95,8 @@ $DemandNo	= isset($_POST['demandno']) ? $_POST['demandno'] : '';
 				  <?php
 $no=1;   
 $c=0;			  
-	$sql=mysqli_query($con,"SELECT * FROM tbl_pekerjaan_mekanik");	
-    while($row = mysqli_fetch_array($sql)){ 
+	$sql=sqlsrv_query($con,"SELECT * FROM dbknitt.tbl_pekerjaan_mekanik");	
+    while($row = sqlsrv_fetch_array($sql, SQLSRV_FETCH_ASSOC)){ 
 	$jamS=floor($row['waktu_single']/60);
 	$menitS=$row['waktu_single']%60;
 	if($menitS=="0"){
@@ -184,10 +184,10 @@ $c=0;
                   <tbody>
 <?php
 $no=1;
-$qry= mysqli_query($con,"SELECT * FROM tbl_kpi_mekanik WHERE tgl_setting BETWEEN '$Awal' AND '$Akhir' ");					  
-	while($r=mysqli_fetch_array($qry)){
-$sqlA	= mysqli_query($con,"SELECT * FROM tbl_pekerjaan_mekanik WHERE pekerjaan='".$r['kegiatan']."'");	
-$rowA	= mysqli_fetch_array($sqlA);
+$qry= sqlsrv_query($con,"SELECT * FROM dbknitt.tbl_kpi_mekanik WHERE tgl_setting BETWEEN '$Awal' AND '$Akhir' ");					  
+	while($r=sqlsrv_fetch_array($qry, SQLSRV_FETCH_ASSOC)){
+$sqlA	= sqlsrv_query($con,"SELECT * FROM dbknitt.tbl_pekerjaan_mekanik WHERE pekerjaan='".$r['kegiatan']."'");	
+$rowA	= sqlsrv_fetch_array($sqlA, SQLSRV_FETCH_ASSOC);
 		
 if($r['status_pekerjaan']=="Selesai" or $r['status_pekerjaan']=="Pindah Mesin"){
 	

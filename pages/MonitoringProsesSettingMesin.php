@@ -235,10 +235,22 @@ if ($_POST['mutasikain'] == "MutasiKain") {
   {
     require_once "koneksi.php";
     $format = "20" . date("ymd");
-    $sql = mysqli_query($con, "SELECT no_mutasi FROM tbl_mutasi_kain WHERE substr(no_mutasi,1,8) like '%" . $format . "%' ORDER BY no_mutasi DESC LIMIT 1 ") or die(mysql_error());
-    $d = mysqli_num_rows($sql);
+    $query = "SELECT TOP 1 
+            COUNT(*) OVER() as num_row, 
+            no_mutasi 
+          FROM tbl_mutasi_kain 
+          WHERE SUBSTRING(no_mutasi, 1, 8) LIKE '%" . $format . "%' 
+          ORDER BY no_mutasi DESC";
+
+    $sql = sqlsrv_query($con, $query);
+    $d = 0; 
+    $r = null;
+    if (sqlsrv_has_rows($sql)) {
+        $r = sqlsrv_fetch_array($sql, SQLSRV_FETCH_ASSOC);
+        // Ambil jumlah baris DARI HASIL QUERY (num_row), bukan dari fungsi PHP
+        $d = $r['num_row']; 
+    }
     if ($d > 0) {
-      $r = mysqli_fetch_array($sql);
       $d = $r['no_mutasi'];
       $str = substr($d, 8, 2);
       $Urut = (int)$str;
@@ -256,18 +268,18 @@ if ($_POST['mutasikain'] == "MutasiKain") {
   }
   $nomid = mutasiurut();
 
-  $sql1 = mysqli_query($con, "SELECT *,count(b.transid) as jmlrol,a.transid as kdtrans FROM tbl_mutasi_kain a 
-                          LEFT JOIN tbl_prodemand b ON a.transid=b.transid 
-                          WHERE isnull(a.no_mutasi) AND date_format(a.tgl_buat ,'%Y-%m-%d')='$Awal' AND a.gshift='$Gshift' 
+  $sql1 = sqlsrv_query($con, "SELECT a.transid as kdtrans, count(b.transid) as jmlrol FROM dbknitt.tbl_mutasi_kain a 
+                          LEFT JOIN dbknitt.tbl_prodemand b ON a.transid=b.transid 
+                          WHERE a.no_mutasi IS NULL AND CONVERT(date, a.tgl_buat)='$Awal' AND a.gshift='$Gshift' 
                           GROUP BY a.transid");
   $n1 = 1;
   $noceklist1 = 1;
-  while ($r1 = mysqli_fetch_array($sql1)) {
+  while ($r1 = sqlsrv_fetch_array($sql1, SQLSRV_FETCH_ASSOC)) {
     if ($_POST['cek'][$n1] != '') {
       $transid1 = $_POST['cek'][$n1];
-      mysqli_query($con, "UPDATE tbl_mutasi_kain SET
+      sqlsrv_query($con, "UPDATE dbknitt.tbl_mutasi_kain SET
 		no_mutasi='$nomid',
-		tgl_mutasi=now()
+		tgl_mutasi=GETDATE()
 		WHERE transid='$transid1'
 		");
     } else {

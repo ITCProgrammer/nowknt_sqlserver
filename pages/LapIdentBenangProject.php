@@ -211,8 +211,8 @@ $sqlDB22PROPB =" SELECT ITXVIEWKK.PROJECTCODE,ITXVIEWKK.ORIGDLVSALORDLINESALORDE
 $stmt2PROPB   = db2_exec($conn1,$sqlDB22PROPB, array('cursor'=>DB2_SCROLLABLE));
 $rowdb22PROPB = db2_fetch_assoc($stmt2PROPB);
 		
-$sqlKtPB=mysqli_query($con," SELECT no_mesin FROM tbl_mesin WHERE kd_dtex='".$msinPB."' LIMIT 1");
-$rkPB=mysqli_fetch_array($sqlKtPB);
+$sqlKtPB=sqlsrv_query($con," SELECT TOP 1 no_mesin FROM dbknitt.tbl_mesin WHERE kd_dtex='".$msinPB."'");
+$rkPB=sqlsrv_fetch_array($sqlKtPB);
 ?>
 	  <tr>
 	  <td style="text-align: center"><?php echo $rowdb21PB['TRANSACTIONNUMBER']; ?></td>
@@ -312,7 +312,7 @@ if($_POST['mutasikain']=="MutasiKain"){
 function mutasiurut(){
 include "koneksi.php";		
 $format = "20".date("ymd");
-$sql=mysqli_query($con,"SELECT no_mutasi FROM tbl_mutasi_kain WHERE substr(no_mutasi,1,8) like '%".$format."%' ORDER BY no_mutasi DESC LIMIT 1 ") or die (mysql_error());
+$sql=mysqli_query($con,"SELECT no_mutasi FROM tbl_mutasi_kain WHERE substr(no_mutasi,1,8) like '%".$format."%' ORDER BY no_mutasi DESC LIMIT 1 ");
 $d=mysqli_num_rows($sql);
 if($d>0){
 $r=mysqli_fetch_array($sql);
