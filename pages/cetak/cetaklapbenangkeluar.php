@@ -277,8 +277,8 @@ GROUP BY
 $stmt2KPI   = db2_exec($conn1,$sqlDB2KPI, array('cursor'=>DB2_SCROLLABLE));
 $rKPI = db2_fetch_assoc($stmt2KPI);
 		
-$sqlKt=mysqli_query($con," SELECT no_mesin FROM tbl_mesin WHERE kd_dtex='".$msin."' LIMIT 1");
-$rk=mysqli_fetch_array($sqlKt);
+$sqlKt=sqlsrv_query($con," SELECT TOP 1 no_mesin FROM dbknitt.tbl_mesin WHERE kd_dtex='".$msin."'");
+$rk=sqlsrv_fetch_array($sqlKt);
 	$cns =round($rowdb21['QTY_CONES']);	
 	$brt =number_format(round($rowdb21['QTY_KG'],2),2);	
             echo "<tr valign='top'>

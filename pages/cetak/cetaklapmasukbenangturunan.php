@@ -235,8 +235,8 @@ if($rowdb22['TRANSACTIONTIME']>="07:00:00" and $rowdb22['TRANSACTIONTIME']<="15:
 	$shf="3";
 }		
 if($rowdb21['SCHEDULEDRESOURCECODE']!="") { $msin = $rowdb21['SCHEDULEDRESOURCECODE'];}else { $msin = $rowdb21['NOMC']; }		
-$sqlKt=mysqli_query($con," SELECT no_mesin FROM tbl_mesin WHERE kd_dtex='".$msin."' LIMIT 1");
-$rk=mysqli_fetch_array($sqlKt);	
+$sqlKt=sqlsrv_query($con," SELECT TOP 1 no_mesin FROM dbknitt.tbl_mesin WHERE kd_dtex='".$msin."'");
+$rk=sqlsrv_fetch_array($sqlKt);	
 if($rowdb21['LONGDESCRIPTION']!=""){$uid=trim($rowdb21['LONGDESCRIPTION']);}else{$uid=trim($rowdb21['CREATIONUSER']);}		
 $sqlDB2KPI = " SELECT
 	a.VALUESTRING
