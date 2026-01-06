@@ -2,8 +2,8 @@
 ini_set("error_reporting", 1);
 include("../koneksi.php");
     $modal_id=$_GET['id'];
-	$modal=mysqli_query($con,"SELECT * FROM `tbl_mesin` WHERE no_mesin='$modal_id' ");
-while($r=mysqli_fetch_array($modal)){
+	$modal=sqlsrv_query($con,"SELECT * FROM dbknitt.tbl_mesin WHERE no_mesin='$modal_id' ");
+while($r=sqlsrv_fetch_array($modal)){
 ?>
           <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -25,14 +25,14 @@ while($r=mysqli_fetch_array($modal)){
 </thead>
 <tbody>
   <?php 
-  $sql=mysqli_query($con," SELECT
-	jenis_perbaikan AS `JENIS PERBAIKAN`,
-	tgl_perbaikan AS `TGL PERBAIKAN`
+  $sql=sqlsrv_query($con," SELECT
+	jenis_perbaikan AS JENIS_PERBAIKAN,
+	FORMAT(tgl_perbaikan,'yyyy-MM-dd') AS TGL_PERBAIKAN
 FROM
-	`tbl_perbaikan_mesin` a 
-INNER JOIN `tbl_mesin` b ON a.id_mesin=b.id
+	dbknitt.tbl_perbaikan_mesin a 
+INNER JOIN dbknitt.tbl_mesin b ON a.id_mesin=b.id
 WHERE b.no_mesin='$modal_id'");
-  while($r=mysqli_fetch_array($sql)){
+  while($r=sqlsrv_fetch_array($sql)){
 	 
 		$no++;
 		$bgcolor = ($col++ & 1) ? 'gainsboro' : 'antiquewhite';
@@ -40,8 +40,8 @@ WHERE b.no_mesin='$modal_id'");
 	?>
    <tr bgcolor="<?php echo $bgcolor; ?>">
      <td align="center"><?php echo $no; ?></td>
-     <td align="center"><?php echo $r['TGL PERBAIKAN']; ?></td>
-     <td ><?php echo $r['JENIS PERBAIKAN']; ?></td>
+     <td align="center"><?php echo $r['TGL_PERBAIKAN']; ?></td>
+     <td ><?php echo $r['JENIS_PERBAIKAN']; ?></td>
      </tr>
    <?php } ?>
    </tbody>

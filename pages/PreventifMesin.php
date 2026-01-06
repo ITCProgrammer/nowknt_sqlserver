@@ -41,45 +41,33 @@ WHERE USERGENERICGROUP.USERGENERICGROUPTYPECODE = 'MCK' AND
 $no=1;   
 $c=0;
 $stmt   = db2_exec($conn1,$sqlDB2, array('cursor'=>DB2_SCROLLABLE));
-while($rowdb2 = db2_fetch_assoc($stmt)){	
-	$sql=mysqli_query($con," SELECT
-  a.id,
-	a.no_mesin,
-	a.batas_produksi,b.tgl_servis,b.tgl_buat,b.sts 
-FROM
-	tbl_mesin a
-	LEFT JOIN (
-SELECT
-no_mesin,tgl_servis,tgl_buat,sts 
-FROM
-	( SELECT * FROM tbl_jadwal  ORDER BY id DESC ) a 
-GROUP BY
-	a.no_mesin 
-	) b ON a.no_mesin = b.no_mesin
-	WHERE a.no_mesin='$rowdb2[SEARCHDESCRIPTION]'
-	GROUP BY a.no_mesin ");
-  $r=mysqli_fetch_array($sql);
- $sql1=mysqli_query($con," SELECT a.tgl_servis,b.kg_awal,b.sts FROM tbl_jadwal a
-LEFT JOIN 
-(
-SELECT sum(kg_awal) as kg_awal,sts,no_mesin  FROM tbl_jadwal  WHERE no_mesin='".$rowdb2['SEARCHDESCRIPTION']."' GROUP BY no_mesin
-) b ON b.no_mesin=a.no_mesin 
-WHERE a.no_mesin='".$rowdb2['SEARCHDESCRIPTION']."' ORDER BY a.tgl_servis DESC LIMIT 1 ");
-     $r1=mysqli_fetch_array($sql1);	
+while($rowdb2 = db2_fetch_assoc($stmt)){
+	$sql=sqlsrv_query($con," SELECT a.id, a.no_mesin, a.batas_produksi, b.tgl_servis, b.tgl_buat, b.sts 
+                            FROM dbknitt.tbl_mesin a 
+                            OUTER APPLY (
+                                SELECT TOP 1 tgl_servis, tgl_buat, sts 
+                                FROM dbknitt.tbl_jadwal j 
+                                WHERE j.no_mesin = a.no_mesin 
+                                ORDER BY j.id DESC
+                            ) b 
+                            WHERE a.no_mesin = '$rowdb2[SEARCHDESCRIPTION]' ");
+  $r=sqlsrv_fetch_array($sql, SQLSRV_FETCH_ASSOC);
+ $sql1=sqlsrv_query($con," SELECT TOP 1 a.tgl_servis, b.kg_awal, a.sts FROM dbknitt.tbl_jadwal a
+                            LEFT JOIN (
+                                SELECT sum(kg_awal) as kg_awal, no_mesin  FROM dbknitt.tbl_jadwal  WHERE no_mesin='".$rowdb2['SEARCHDESCRIPTION']."' GROUP BY no_mesin
+                            ) b ON b.no_mesin=a.no_mesin 
+                            WHERE a.no_mesin='".$rowdb2['SEARCHDESCRIPTION']."' ORDER BY a.tgl_servis DESC ");
+     $r1=sqlsrv_fetch_array($sql1, SQLSRV_FETCH_ASSOC);	
 
  // awal
  $totalP=0;
- $sqlP=mysqli_query($con," SELECT
-	a.no_mesin, a.kd_dtex, a.batas_produksi, sum(b.berat_awal) as `KGS`
-FROM
-	tbl_mesin a
-LEFT JOIN tbl_inspeksi_detail b ON a.no_mesin=b.no_mc
-WHERE a.no_mesin='".$rowdb2['SEARCHDESCRIPTION']."'
-GROUP BY
-	a.no_mesin
-ORDER BY
-	a.no_mesin ASC ");
-     $rP=mysqli_fetch_array($sqlP);			
+ $sqlP=sqlsrv_query($con," SELECT a.no_mesin, a.kd_dtex, a.batas_produksi, sum(b.berat_awal) as KGS
+                            FROM dbknitt.tbl_mesin a
+                            LEFT JOIN dbknitt.tbl_inspeksi_detail b ON a.no_mesin=b.no_mc
+                            WHERE a.no_mesin='".$rowdb2['SEARCHDESCRIPTION']."'
+                            GROUP BY a.no_mesin, a.kd_dtex, a.batas_produksi
+                            ORDER BY a.no_mesin ASC ");
+     $rP=sqlsrv_fetch_array($sqlP, SQLSRV_FETCH_ASSOC);			
 $sqlDB2P=" 
 SELECT SUM(WEIGHTNET) AS KG FROM ELEMENTSINSPECTION 
  LEFT OUTER JOIN DB2ADMIN.PRODUCTIONDEMAND ON PRODUCTIONDEMAND.CODE = ELEMENTSINSPECTION.DEMANDCODE 
@@ -222,100 +210,3 @@ function checkAll(form1){
     });
   });
 </script>
-<?php 
-if($_POST['mutasikain']=="MutasiKain"){
-	
-function mutasiurut(){
-include "koneksi.php";		
-$format = "20".date("ymd");
-$sql=sqlsrv_query($con,"SELECT TOP 1 no_mutasi FROM dbknitt.tbl_mutasi_kain WHERE SUBSTRING(no_mutasi,1,8) LIKE '%".$format."%' ORDER BY no_mutasi DESC");
-if($sql && $r=sqlsrv_fetch_array($sql, SQLSRV_FETCH_ASSOC)){
-$d=$r['no_mutasi'];
-$str=substr($d,8,2);
-$Urut = (int)$str;
-}else{
-$Urut = 0;
-}
-$Urut = $Urut + 1;
-$Nol="";
-$nilai=2-strlen($Urut);
-for ($i=1;$i<=$nilai;$i++){
-$Nol= $Nol."0";
-}
-$tidbr =$format.$Nol.$Urut;
-return $tidbr;
-}
-$nomid=mutasiurut();	
-
-$sql1=mysqli_query($con,"SELECT *,count(b.transid) as jmlrol,a.transid as kdtrans FROM tbl_mutasi_kain a 
-LEFT JOIN tbl_prodemand b ON a.transid=b.transid 
-WHERE isnull(a.no_mutasi) AND date_format(a.tgl_buat ,'%Y-%m-%d')='$Awal' AND a.gshift='$Gshift' 
-GROUP BY a.transid");
-$n1=1;
-$noceklist1=1;	
-while($r1=mysqli_fetch_array($sql1)){	
-	if($_POST['cek'][$n1]!='') 
-		{
-		$transid1 = $_POST['cek'][$n1];
-		mysqli_query($con,"UPDATE tbl_mutasi_kain SET
-		no_mutasi='$nomid',
-		tgl_mutasi=now()
-		WHERE transid='$transid1'
-		");
-		}else{
-			$noceklist1++;
-	}
-	$n1++;
-	}
-if($noceklist1==$n1){
-	echo "<script>
-  	$(function() {
-    const Toast = Swal.mixin({
-      toast: false,
-      position: 'middle',
-      showConfirmButton: false,
-      timer: 2000
-    });
-	Toast.fire({
-        icon: 'info',
-        title: 'Data tidak ada yang di Ceklist',
-		
-      })
-  });
-  
-</script>";	
-}else{	
-echo "<script>
-	$(function() {
-    const Toast = Swal.mixin({
-      toast: false,
-      position: 'middle',
-      showConfirmButton: true,
-      timer: 6000
-    });
-	Toast.fire({
-  title: 'Data telah di Mutasi',
-  text: 'klik OK untuk Cetak Bukti Mutasi',
-  icon: 'success',  
-}).then((result) => {
-  if (result.isConfirmed) {
-    	window.open('pages/cetak/cetak_mutasi_ulang.php?mutasi=$nomid', '_blank');
-  }
-})
-  });
-	</script>";
-	
-/*echo "<script>
-	Swal.fire({
-  title: 'Data telah di Mutasi',
-  text: 'klik OK untuk Cetak Bukti Mutasi',
-  icon: 'success',  
-}).then((result) => {
-  if (result.isConfirmed) {
-    	window.location='Mutasi';
-  }
-});
-	</script>";	*/
-}
-}
-?>

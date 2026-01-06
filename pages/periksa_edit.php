@@ -1,8 +1,8 @@
 <?php
 include("../koneksi.php");
     $modal_id=$_GET['id'];
-	$modal=mysqli_query($con,"SELECT * FROM `tbl_jadwal` WHERE id='$modal_id' ");
-while($r=mysqli_fetch_array($modal)){
+	$modal=sqlsrv_query($con,"SELECT * FROM dbknitt.tbl_jadwal WHERE id='$modal_id' ");
+while($r=sqlsrv_fetch_array($modal)){
 ?>
           <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -41,8 +41,8 @@ while($r=mysqli_fetch_array($modal)){
                   <div class="col-sm-6">
                      <select name="mekanik" class="form-control select2" id="mekanik">
 					  <option value="">Pilih</option>
-						<?php $qry2=mysqli_query($con,"SELECT nama FROM tbl_operator2 WHERE jabatan='Mekanik' and `status`='AKTIF' "); 
-						while($r2=mysqli_fetch_array($qry2)){
+						<?php $qry2=sqlsrv_query($con,"SELECT nama FROM dbknitt.tbl_operator2 WHERE jabatan='Mekanik' and status='AKTIF' "); 
+						while($r2=sqlsrv_fetch_array($qry2)){
 						?>
                       <option value="<?php echo $r2['nama'];?>" <?php if($r2['nama']==$r['mekanik']){echo "SELECTED";}?>><?php echo $r2['nama'];?></option>
 						<?php } ?>
@@ -54,8 +54,8 @@ while($r=mysqli_fetch_array($modal)){
                   <div class="col-sm-6">
                      <select name="mekanik2" class="form-control" id="mekanik2">
 					  <option value="">Pilih</option>
-						<?php $qry2=mysqli_query($con,"SELECT nama FROM tbl_operator2 WHERE jabatan='Mekanik' and `status`='AKTIF' "); 
-						while($r2=mysqli_fetch_array($qry2)){
+						<?php $qry2=sqlsrv_query($con,"SELECT nama FROM dbknitt.tbl_operator2 WHERE jabatan='Mekanik' and status='AKTIF' "); 
+						while($r2=sqlsrv_fetch_array($qry2)){
 						?>
                       <option value="<?php echo $r2['nama'];?>" <?php if($r2['nama']==$r['mekanik2']){echo "SELECTED";}?>><?php echo $r2['nama'];?></option>
 						<?php } ?>
@@ -67,8 +67,8 @@ while($r=mysqli_fetch_array($modal)){
                   <div class="col-sm-6">
                      <select name="mekanik3" class="form-control" id="mekanik3">
 					  <option value="">Pilih</option>
-						<?php $qry2=mysqli_query($con,"SELECT nama FROM tbl_operator2 WHERE jabatan='Mekanik' and `status`='AKTIF' "); 
-						while($r2=mysqli_fetch_array($qry2)){
+						<?php $qry2=sqlsrv_query($con,"SELECT nama FROM dbknitt.tbl_operator2 WHERE jabatan='Mekanik' and status='AKTIF' "); 
+						while($r2=sqlsrv_fetch_array($qry2)){
 						?>
                       <option value="<?php echo $r2['nama'];?>" <?php if($r2['nama']==$r['mekanik3']){echo "SELECTED";}?>><?php echo $r2['nama'];?></option>
 						<?php } ?>

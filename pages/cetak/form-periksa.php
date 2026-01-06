@@ -10,8 +10,8 @@ $act=$_GET['g'];
 //-
 ?>
 <?php
-$qry=mysqli_query($con,"SELECT *,now() as tgl FROM tbl_jadwal WHERE id='".$_GET['id']."'");
-$r=mysqli_fetch_array($qry);
+$qry=sqlsrv_query($con,"SELECT *, FORMAT(GETDATE(), 'yyyy-MM-dd HH:mm:ss') as tgl FROM dbknitt.tbl_jadwal WHERE id='".$_GET['id']."'");
+$r=sqlsrv_fetch_array($qry);
 
 ?>
 <?php if ($r['kategori']=="Over Houl") {

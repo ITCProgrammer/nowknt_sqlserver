@@ -2,8 +2,8 @@
 ini_set("error_reporting", 1);
 include("../koneksi.php");
     $modal_id=$_GET['id'];
-    $modal=mysqli_query($con,"SELECT * FROM `tbl_mesin` WHERE kd_dtex='$modal_id' ");
-while ($r=mysqli_fetch_array($modal)) {
+    $modal=sqlsrv_query($con,"SELECT * FROM dbknitt.tbl_mesin WHERE kd_dtex='$modal_id' ");
+while ($r=sqlsrv_fetch_array($modal)) {
     ?>
 <div class="modal-dialog modal-xl">
   <div class="modal-content">

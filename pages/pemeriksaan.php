@@ -6,42 +6,55 @@
         $mekanik=str_replace("'", "''", $_POST['mekanik']);
         $mekanik2=str_replace("'", "''", $_POST['mekanik2']);
         $mekanik3=str_replace("'", "''", $_POST['mekanik3']);
+		$tgl_service = !empty($_POST['tgl_service']) ? $_POST['tgl_service'] : NULL;
         $sts=$_POST['sts'];
         if ($sts=="Hold") {
             $produksi="0";
         } else {
             $produksi=$_POST['produksi'];
         }
-        $qry1=mysqli_query($con,"INSERT INTO tbl_jadwal SET
-		no_mesin='$no_mesin',
-		kg_awal='$produksi',
-		ket='$ket',
-		mekanik='$mekanik',
-		mekanik2='$mekanik2',
-		mekanik3='$mekanik3',
-		kategori='".$_POST['kategori']."',
-		sts='$sts',
-		tgl_servis='".$_POST['tgl_service']."',
-		tgl_buat=now(),
-		tgl_update=now(),
-		userid='agung'
-		");
-		//userid='".$_SESSION['user_id']."'
-        if ($qry1) {
-            //echo "<script>alert('Data Tersimpan');</script>";
-            //echo "<script>window.location.href='?p=Form-Pemeriksaan&no_mesin=$_GET[no_mesin]';</script>";
-            echo "<script>swal({
-  title: 'Data Tersimpan',
-  text: 'Klik Ok untuk melanjutkan',
-  type: 'success',
-  }).then((result) => {
-  if (result.value) {
-    window.location.href='Pemeriksaan-".$_GET['no_mesin']."';
-  }
-});</script>";
-        } else {
-            echo "There's been a problem: " . mysql_error();
-        }
+       $sql = "INSERT INTO dbknitt.tbl_jadwal
+				(
+					no_mesin,
+					kg_awal,
+					ket,
+					mekanik,
+					mekanik2,
+					mekanik3,
+					kategori,
+					sts,
+					tgl_servis,
+					tgl_buat,
+					tgl_update,
+					userid
+				)
+				VALUES
+				(
+					?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE(), GETDATE(), ?
+				)
+				";
+
+				$params = [ $no_mesin,$produksi,$ket,
+							$mekanik,$mekanik2,$mekanik3,
+							$_POST['kategori'],$sts,$tgl_service,'agung'
+							];
+
+				$stmt = sqlsrv_query($con, $sql, $params);
+
+				if ($stmt === false) {
+					die(print_r(sqlsrv_errors(), true));
+				}
+			echo "<script>
+					swal({
+						title: 'Data Tersimpan',
+						text: 'Klik Ok untuk melanjutkan',
+						type: 'success'
+					}).then((result) => {
+						if (result.value) {
+							window.location.href='Pemeriksaan-{$no_mesin}';
+						}
+					});
+				</script>";
     }
 ?>
 <div class="container-fluid">
@@ -59,30 +72,54 @@
             </div>
 		</div>
 		<?php		
-    $sql=mysqli_query($con," SELECT
-	a.no_mesin, a.kd_dtex, a.batas_produksi, sum(b.berat_awal) as `KGS`
-FROM
-	tbl_mesin a
-LEFT JOIN tbl_inspeksi_detail b ON a.no_mesin=b.no_mc
-WHERE a.no_mesin='".$_GET['no_mesin']."'
-GROUP BY
-	a.no_mesin
-ORDER BY
-	a.no_mesin ASC ");
-     $r=mysqli_fetch_array($sql);
-	 $sql1=mysqli_query($con," SELECT a.tgl_servis,b.kg_awal,b.sts FROM tbl_jadwal a
-LEFT JOIN 
-(
-SELECT sum(kg_awal) as kg_awal,sts,no_mesin  FROM tbl_jadwal  WHERE no_mesin='".$_GET['no_mesin']."' GROUP BY no_mesin
-) b ON b.no_mesin=a.no_mesin 
-WHERE a.no_mesin='".$_GET['no_mesin']."' ORDER BY a.tgl_servis DESC LIMIT 1 ");
-     $r1=mysqli_fetch_array($sql1);
+    $sql=sqlsrv_query($con," SELECT
+									a.no_mesin, a.kd_dtex, a.batas_produksi, SUM(b.berat_awal) as KGS
+								FROM
+									dbknitt.tbl_mesin a
+								LEFT JOIN dbknitt.tbl_inspeksi_detail b ON a.no_mesin=b.no_mc
+								WHERE a.no_mesin='".$_GET['no_mesin']."'
+								GROUP BY
+									a.no_mesin,
+									a.kd_dtex,
+									a.batas_produksi
+								ORDER BY
+									a.no_mesin ASC ");
+    $r=sqlsrv_fetch_array($sql);
+	$sql1=sqlsrv_query($con," SELECT TOP 1 
+									a.tgl_servis,
+									b.kg_awal,
+									b.sts 
+								FROM dbknitt.tbl_jadwal a
+								LEFT JOIN 
+									(
+										SELECT 
+											SUM(kg_awal) as kg_awal,
+											(
+												SELECT TOP 1 sts
+												FROM dbknitt.tbl_jadwal t2
+												WHERE t2.no_mesin = t1.no_mesin
+												ORDER BY t2.tgl_servis ASC
+											) AS sts,
+											no_mesin  
+										FROM dbknitt.tbl_jadwal t1 
+										WHERE no_mesin='".$_GET['no_mesin']."' 
+										GROUP BY no_mesin
+									) b ON b.no_mesin=a.no_mesin 
+								WHERE 
+									a.no_mesin='".$_GET['no_mesin']."' 
+								ORDER BY a.tgl_servis 
+								DESC");
+    $r1=sqlsrv_fetch_array($sql1);
 		
-$sqlDB2=" 
-SELECT SUM(WEIGHTNET) AS KG FROM ELEMENTSINSPECTION 
- LEFT OUTER JOIN DB2ADMIN.PRODUCTIONDEMAND ON PRODUCTIONDEMAND.CODE = ELEMENTSINSPECTION.DEMANDCODE 
- LEFT OUTER JOIN DB2ADMIN.ADSTORAGE ON ADSTORAGE.UNIQUEID = PRODUCTIONDEMAND.ABSUNIQUEID AND ADSTORAGE.NAMENAME ='MachineNo' 
- WHERE ELEMENTITEMTYPECODE='KGF' AND ADSTORAGE.VALUESTRING='$r[kd_dtex]'
+	$sqlDB2="SELECT 
+					SUM(WEIGHTNET) AS KG 
+				FROM ELEMENTSINSPECTION 
+				LEFT OUTER JOIN DB2ADMIN.PRODUCTIONDEMAND 
+					ON PRODUCTIONDEMAND.CODE = ELEMENTSINSPECTION.DEMANDCODE 
+				LEFT OUTER JOIN DB2ADMIN.ADSTORAGE 
+					ON ADSTORAGE.UNIQUEID = PRODUCTIONDEMAND.ABSUNIQUEID 
+					AND ADSTORAGE.NAMENAME ='MachineNo' 
+				WHERE ELEMENTITEMTYPECODE='KGF' AND ADSTORAGE.VALUESTRING='$r[kd_dtex]'
 ";
 $stmt   = db2_exec($conn1,$sqlDB2, array('cursor'=>DB2_SCROLLABLE));
 $rowdb2 = db2_fetch_assoc($stmt);	
@@ -126,8 +163,8 @@ $rowdb2 = db2_fetch_assoc($stmt);
 				<div class="col-sm-2">
 					<select name="mekanik" class="form-control form-control-sm  select2" id="mekanik">
 						<option value="">Pilih</option>
-						<?php $qry2=mysqli_query($con,"SELECT nama FROM tbl_operator2 WHERE jabatan='Mekanik' and `status`='AKTIF' ");
-                        while ($r2=mysqli_fetch_array($qry2)) {
+						<?php $qry2=sqlsrv_query($con,"SELECT nama FROM dbknitt.tbl_operator2 WHERE jabatan='Mekanik' and status='AKTIF' ");
+                        while ($r2=sqlsrv_fetch_array($qry2)) {
                             ?>
 						<option value="<?php echo $r2['nama']; ?>">
 							<?php echo $r2['nama']; ?>
@@ -142,8 +179,8 @@ $rowdb2 = db2_fetch_assoc($stmt);
 				<div class="col-sm-2">
 					<select name="mekanik2" class="form-control form-control-sm select2" id="mekanik2">
 						<option value="">Pilih</option>
-						<?php $qry2=mysqli_query($con,"SELECT nama FROM tbl_operator2 WHERE jabatan='Mekanik' and `status`='AKTIF' ");
-                        while ($r2=mysqli_fetch_array($qry2)) {
+						<?php $qry2=sqlsrv_query($con,"SELECT nama FROM dbknitt.tbl_operator2 WHERE jabatan='Mekanik' and status='AKTIF' ");
+                        while ($r2=sqlsrv_fetch_array($qry2)) {
                             ?>
 						<option value="<?php echo $r2['nama']; ?>">
 							<?php echo $r2['nama']; ?>
@@ -158,8 +195,8 @@ $rowdb2 = db2_fetch_assoc($stmt);
 				<div class="col-sm-2">
 					<select name="mekanik3" class="form-control form-control-sm select2" id="mekanik3">
 						<option value="">Pilih</option>
-						<?php $qry2=mysqli_query($con,"SELECT nama FROM tbl_operator2 WHERE jabatan='Mekanik' and `status`='AKTIF' ");
-                        while ($r2=mysqli_fetch_array($qry2)) {
+						<?php $qry2=sqlsrv_query($con,"SELECT nama FROM dbknitt.tbl_operator2 WHERE jabatan='Mekanik' and status='AKTIF' ");
+                        while ($r2=sqlsrv_fetch_array($qry2)) {
                             ?>
 						<option value="<?php echo $r2['nama']; ?>">
 							<?php echo $r2['nama']; ?>
@@ -237,11 +274,11 @@ $rowdb2 = db2_fetch_assoc($stmt);
 					</thead>
 					<tbody>
 						<?php
-  $sqlcek=mysqli_query($con," SELECT * FROM tbl_jadwal WHERE no_mesin='".$_GET['no_mesin']."' ORDER by id DESC LIMIT 1");
-  $rcek=mysqli_fetch_array($sqlcek);
+  $sqlcek=sqlsrv_query($con," SELECT TOP 1 * FROM dbknitt.tbl_jadwal WHERE no_mesin='".$_GET['no_mesin']."' ORDER by id DESC");
+  $rcek=sqlsrv_fetch_array($sqlcek);
   $akhir=$rcek['tgl_servis'];				
-  $sql=mysqli_query($con," SELECT * FROM tbl_jadwal WHERE no_mesin='".$_GET['no_mesin']."' ");			
-  while ($r=mysqli_fetch_array($sql)) {
+  $sql=sqlsrv_query($con," SELECT * FROM dbknitt.tbl_jadwal WHERE no_mesin='".$_GET['no_mesin']."' ");			
+  while ($r=sqlsrv_fetch_array($sql)) {
       $no++;
       $bgcolor = ($col++ & 1) ? 'gainsboro' : 'antiquewhite'; ?>
 						<tr bgcolor="<?php echo $bgcolor; ?>">

@@ -2,7 +2,7 @@
   include '../../koneksi.php';
   ini_set("error_reporting", 1);
 
-$qrytgl=mysqli_query($con,"SELECT DATE_FORMAT(now(),'%d %M %Y %H:%i') as tgl"); $r2=mysqli_fetch_array($qrytgl);
+// $qrytgl=mysqli_query($con,"SELECT DATE_FORMAT(now(),'%d %M %Y %H:%i') as tgl"); $r2=mysqli_fetch_array($qrytgl);
 function fk($mc)
 {
 $con=mysqli_connect("10.0.0.10","dit","4dm1n","dbknitt");
@@ -124,32 +124,49 @@ $c=0;
 $stmt   = db2_exec($conn1,$sqlDB2, array('cursor'=>DB2_SCROLLABLE));
 while($rowdb2 = db2_fetch_assoc($stmt)){ 
 $fks=fk($rowdb2['SEARCHDESCRIPTION']);	
-$sql=mysqli_query($con," SELECT
-	a.no_mesin,a.batas_produksi, a.kd_dtex, a.batas_produksi, sum(b.berat_awal) as `KGS`
-FROM
-	tbl_mesin a
-INNER JOIN tbl_inspeksi_detail b ON a.no_mesin=b.no_mc
-WHERE a.no_mesin='".$rowdb2['SEARCHDESCRIPTION']."'
-GROUP BY
-	a.no_mesin
-ORDER BY
-	a.no_mesin ASC ");
-     $r=mysqli_fetch_array($sql);	
-	 $sql1=mysqli_query($con," SELECT a.tgl_servis,b.kg_awal,b.sts FROM tbl_jadwal a
-LEFT JOIN 
-(
-SELECT sum(kg_awal) as kg_awal,sts,no_mesin  FROM tbl_jadwal  WHERE no_mesin='".$rowdb2['SEARCHDESCRIPTION']."' GROUP BY no_mesin
-) b ON b.no_mesin=a.no_mesin 
-WHERE a.no_mesin='".$rowdb2['SEARCHDESCRIPTION']."' ORDER BY a.tgl_servis DESC LIMIT 1 ");
-$r1=mysqli_fetch_array($sql1);	
-$sqlbts=mysqli_query($con," SELECT
+$sql=sqlsrv_query($con," SELECT
+                            a.no_mesin, sum(b.berat_awal) as KGS
+                          FROM
+                            dbknitt.tbl_mesin a
+                          INNER JOIN dbknitt.tbl_inspeksi_detail b ON a.no_mesin=b.no_mc
+                          WHERE a.no_mesin='".$rowdb2['SEARCHDESCRIPTION']."'
+                          GROUP BY
+                            a.no_mesin
+                          ORDER BY
+                            a.no_mesin ASC ");
+     $r=sqlsrv_fetch_array($sql);	
+	 $sql1=sqlsrv_query($con," SELECT TOP 1  
+                                a.tgl_servis,
+                                b.kg_awal,
+                                b.sts 
+                              FROM dbknitt.tbl_jadwal a
+                              LEFT JOIN 
+                                (
+                                  SELECT 
+                                    SUM(kg_awal) as kg_awal,
+                                    (
+                                        SELECT TOP 1 sts
+                                        FROM dbknitt.tbl_jadwal t2
+                                        WHERE t2.no_mesin = t1.no_mesin
+                                        ORDER BY t2.tgl_servis DESC
+                                    ) AS sts,
+                                    no_mesin  
+                                  FROM dbknitt.tbl_jadwal  
+                                  WHERE 
+                                    no_mesin='".$rowdb2['SEARCHDESCRIPTION']."' 
+                                  GROUP BY no_mesin
+                                ) b ON b.no_mesin=a.no_mesin 
+                            WHERE a.no_mesin='".$rowdb2['SEARCHDESCRIPTION']."' 
+                            ORDER BY a.tgl_servis DESC ");
+$r1=sqlsrv_fetch_array($sql1);	
+$sqlbts=sqlsrv_query($con," SELECT
 	a.no_mesin,a.batas_produksi
 FROM
-	tbl_mesin a
+	dbknitt.tbl_mesin a
 WHERE a.no_mesin='".$rowdb2['SEARCHDESCRIPTION']."'
 ORDER BY
 	a.no_mesin ASC ");
-     $rBTS=mysqli_fetch_array($sqlbts);	
+     $rBTS=sqlsrv_fetch_array($sqlbts);	
 $total=round((round($r['KGS'],2)+round($rowdb2['KG'],2))-round($r1['kg_awal'],2), '2');		
 if ($total > $rBTS['batas_produksi'] or $r1['sts']=="Hold") {
           $no++;

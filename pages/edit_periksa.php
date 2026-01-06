@@ -6,15 +6,27 @@ if($_POST){
 	$mekanik2 = $_POST['mekanik2'];
 	$mekanik3 = $_POST['mekanik3'];
 	$ket = str_replace("'","''",$_POST['ket']);
-	$sqlupdate=mysqli_query($con,"UPDATE `tbl_jadwal` SET
-				`sts`='".$_POST['sts']."',
-				`kategori`='".$_POST['kategori']."',
-				`tgl_servis`='".$_POST['tgl_service']."',
-				`mekanik`='$mekanik',
-				`mekanik2`='$mekanik2',
-				`mekanik3`='$mekanik3',
-				`ket`='$ket'
-				WHERE `id`='$id' LIMIT 1");
+	$sql = "UPDATE dbknitt.tbl_jadwal
+			SET
+				sts = ?,
+				kategori = ?,
+				tgl_servis = ?,
+				mekanik = ?,
+				mekanik2 = ?,
+				mekanik3 = ?,
+				ket = ?
+			WHERE id = ?
+			";
+
+			$params = [
+				$_POST['sts'],
+				$_POST['kategori'],
+				$_POST['tgl_service'],
+				$mekanik,
+				$mekanik2,
+				$mekanik3,$ket,$id];
+
+			$stmt = sqlsrv_query($con, $sql, $params);
 				echo " <script>window.location='Pemeriksaan-$_POST[no_mesin]';</script>";
 				/*echo "<script>swal({
   title: 'Data Telah diUbah',   
