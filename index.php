@@ -111,6 +111,7 @@ padding: 15px 15px 0 15px;
 			  <li><a href="KeluarKainGreige" class="dropdown-item">Data Mutasi Greige</a></li>	
               <li><a href="DataKainGreige" class="dropdown-item">Data Kain Greige</a></li>
 			  <li><a href="DataKainGreigePerProject" class="dropdown-item">Data Kain Greige Per Project</a></li>
+			  <li><a href="PengirimanKainGreige" class="dropdown-item">Pengiriman Knitting Greige</a></li>	
 			  <li><a href="AlokasiGreigePerProject" class="dropdown-item">Alokasi Greige Per Project</a></li>	
 			</ul>
           </li>

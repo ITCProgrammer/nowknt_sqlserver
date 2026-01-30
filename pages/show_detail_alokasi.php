@@ -10,8 +10,8 @@ include("../koneksi.php");
 	$hanger		= substr($modal_id1,0,$pos2);
 	$demand		= substr($modal_id1,$pos2+1,10);
 	
-$sqlAL=mysqli_query($con," select SUM(berat) as tot  from tbl_pembagian_greige_now where no_po ='$proj' ");
-$rAL=mysqli_fetch_array($sqlAL);
+$sqlAL=sqlsrv_query($con," select SUM(berat) as tot  from dbknitt.tbl_pembagian_greige_now where no_po ='$proj' ");
+$rAL=sqlsrv_fetch_array($sqlAL, SQLSRV_FETCH_ASSOC);
 	
 ?>
         <div class="modal-dialog modal-xl">
@@ -208,8 +208,8 @@ $tglEst=date('Y-m-d', strtotime($kHari." days", strtotime($rowdb21['TGLS'])));
 						<tbody>
     <?php
 	$no=1;
-	$sqlKBG=mysqli_query($con," select * from tbl_pembagian_greige_now where no_po ='$proj' ");
-	while($rKBG=mysqli_fetch_array($sqlKBG)){
+	$sqlKBG=sqlsrv_query($con," select * from dbknitt.tbl_pembagian_greige_now where no_po ='$proj' ");
+	while($rKBG=sqlsrv_fetch_array($sqlKBG, SQLSRV_FETCH_ASSOC)){
 		
 								
 	echo"<tr>
