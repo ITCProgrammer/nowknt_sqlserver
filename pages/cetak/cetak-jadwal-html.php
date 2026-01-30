@@ -5,34 +5,43 @@
 // $qrytgl=mysqli_query($con,"SELECT DATE_FORMAT(now(),'%d %M %Y %H:%i') as tgl"); $r2=mysqli_fetch_array($qrytgl);
 function fk($mc)
 {
-$con=mysqli_connect("10.0.0.10","dit","4dm1n","dbknitt");
-if (mysqli_connect_errno()) {
-printf("Connect failed: %s\n", mysqli_connect_error());
-exit();
-} 
-    $qry=mysqli_query($con,"SELECT @num:=@num+1 AS urut,kategori FROM
-			tbl_jadwal, (SELECT @num := 0) T
-		WHERE
-			no_mesin = '$mc'
-		ORDER BY
-			id DESC
-		LIMIT 3");
-    $k=0;
-    while ($dt=mysqli_fetch_array($qry)) {
-        $urut[$k]=$dt['urut']." ".$dt['kategori'];
-        $k++;
+    include '../../koneksi.php';
+
+    $sql = "SELECT 
+            ROW_NUMBER() OVER (ORDER BY id DESC) AS urut,
+                kategori
+            FROM (
+                SELECT TOP 3 id, kategori
+                FROM dbknitt.dbo.tbl_jadwal
+                WHERE no_mesin = ?
+                ORDER BY id DESC
+            ) x
+    ";
+
+    $qry = sqlsrv_query($con, $sql, [$mc]);
+    if ($qry === false) {
+        return "0";
     }
-    $ringan="0";
-    if ($urut[0]=="1 Ringan" and $urut[1]=="2 Ringan") {
-        $ringan="2";
-    } elseif ($urut[0]=="1 Ringan" and $urut[1]=="2 Over Houl") {
-        $ringan="1";
-    } elseif ($urut[0]=="1 Over Houl") {
-        $ringan="0";
+
+    $urut = [];
+    while ($dt = sqlsrv_fetch_array($qry, SQLSRV_FETCH_ASSOC)) {
+        $urut[] = $dt['urut'] . " " . $dt['kategori'];
+    }
+
+    $ringan = "0";
+
+    if (isset($urut[0])) {
+        if (isset($urut[1]) && $urut[0] === "1 Ringan" && $urut[1] === "2 Ringan") {
+            $ringan = "2";
+        } elseif (isset($urut[1]) && $urut[0] === "1 Ringan" && $urut[1] === "2 Over Houl") {
+            $ringan = "1";
+        } elseif ($urut[0] === "1 Over Houl") {
+            $ringan = "0";
+        }
     }
 
     return $ringan;
-} 
+}
 ?>
 
 <html>
@@ -150,11 +159,11 @@ $sql=sqlsrv_query($con," SELECT
                                         WHERE t2.no_mesin = t1.no_mesin
                                         ORDER BY t2.tgl_servis DESC
                                     ) AS sts,
-                                    no_mesin  
-                                  FROM dbknitt.tbl_jadwal  
+                                    t1.no_mesin  
+                                  FROM dbknitt.tbl_jadwal t1
                                   WHERE 
-                                    no_mesin='".$rowdb2['SEARCHDESCRIPTION']."' 
-                                  GROUP BY no_mesin
+                                    t1.no_mesin='".$rowdb2['SEARCHDESCRIPTION']."' 
+                                  GROUP BY t1.no_mesin
                                 ) b ON b.no_mesin=a.no_mesin 
                             WHERE a.no_mesin='".$rowdb2['SEARCHDESCRIPTION']."' 
                             ORDER BY a.tgl_servis DESC ");

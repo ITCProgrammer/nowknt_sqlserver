@@ -688,7 +688,7 @@ $sqlDB22PROPB =" SELECT ITXVIEWKK.PROJECTCODE,ITXVIEWKK.ORIGDLVSALORDLINESALORDE
 $stmt2PROPB   = db2_exec($conn1,$sqlDB22PROPB, array('cursor'=>DB2_SCROLLABLE));
 $rowdb22PROPB = db2_fetch_assoc($stmt2PROPB);
 		
-$sqlKtPB=sqlsrv_query($con," SELECT no_mesin FROM tbl_mesin WHERE kd_dtex='".$msinPB."' LIMIT 1");
+$sqlKtPB=sqlsrv_query($con," SELECT TOP 1 no_mesin FROM dbknitt.tbl_mesin WHERE kd_dtex='".$msinPB."'");
 $rkPB=sqlsrv_fetch_array($sqlKtPB);
 ?>
 	  <tr>
@@ -839,7 +839,7 @@ if($rowdb22['TRANSACTIONTIME']>="07:00:00" and $rowdb22['TRANSACTIONTIME']<="15:
 	$shf="3";
 }		
 $msin = $rowdb21['NOMC']; 		
-$sqlKt=sqlsrv_query($con," SELECT no_mesin FROM tbl_mesin WHERE kd_dtex='".$msin."' LIMIT 1");
+$sqlKt=sqlsrv_query($con," SELECT TOP 1 no_mesin FROM dbknitt.tbl_mesin WHERE kd_dtex='".$msin."'");
 $rk=sqlsrv_fetch_array($sqlKt);	
 if($rowdb21['LONGDESCRIPTION']!=""){$uid=trim($rowdb21['LONGDESCRIPTION']);}else{$uid=trim($rowdb21['CREATIONUSER']);}	
 
@@ -1154,102 +1154,3 @@ function checkAll(form1){
     }
 }
 </script>
-<?php 
-if($_POST['mutasikain']=="MutasiKain"){
-	
-function mutasiurut(){
-include "koneksi.php";		
-$format = "20".date("ymd");
-$sql=sqlsrv_query($con,"SELECT no_mutasi FROM tbl_mutasi_kain WHERE substr(no_mutasi,1,8) like '%".$format."%' ORDER BY no_mutasi DESC LIMIT 1 ");
-$d=sqlsrv_num_rows($sql);
-if($d>0){
-$r=sqlsrv_fetch_array($sql);
-$d=$r['no_mutasi'];
-$str=substr($d,8,2);
-$Urut = (int)$str;
-}else{
-$Urut = 0;
-}
-$Urut = $Urut + 1;
-$Nol="";
-$nilai=2-strlen($Urut);
-for ($i=1;$i<=$nilai;$i++){
-$Nol= $Nol."0";
-}
-$tidbr =$format.$Nol.$Urut;
-return $tidbr;
-}
-$nomid=mutasiurut();	
-
-$sql1=sqlsrv_query($con,"SELECT *,count(b.transid) as jmlrol,a.transid as kdtrans FROM tbl_mutasi_kain a 
-LEFT JOIN tbl_prodemand b ON a.transid=b.transid 
-WHERE isnull(a.no_mutasi) AND date_format(a.tgl_buat ,'%Y-%m-%d')='$Awal' AND a.gshift='$Gshift' 
-GROUP BY a.transid");
-$n1=1;
-$noceklist1=1;	
-while($r1=sqlsrv_fetch_array($sql1)){	
-	if($_POST['cek'][$n1]!='') 
-		{
-		$transid1 = $_POST['cek'][$n1];
-		sqlsrv_query($con,"UPDATE tbl_mutasi_kain SET
-		no_mutasi='$nomid',
-		tgl_mutasi=now()
-		WHERE transid='$transid1'
-		");
-		}else{
-			$noceklist1++;
-	}
-	$n1++;
-	}
-if($noceklist1==$n1){
-	echo "<script>
-  	$(function() {
-    const Toast = Swal.mixin({
-      toast: false,
-      position: 'middle',
-      showConfirmButton: false,
-      timer: 2000
-    });
-	Toast.fire({
-        icon: 'info',
-        title: 'Data tidak ada yang di Ceklist',
-		
-      })
-  });
-  
-</script>";	
-}else{	
-echo "<script>
-	$(function() {
-    const Toast = Swal.mixin({
-      toast: false,
-      position: 'middle',
-      showConfirmButton: true,
-      timer: 6000
-    });
-	Toast.fire({
-  title: 'Data telah di Mutasi',
-  text: 'klik OK untuk Cetak Bukti Mutasi',
-  icon: 'success',  
-}).then((result) => {
-  if (result.isConfirmed) {
-    	window.open('pages/cetak/cetak_mutasi_ulang.php?mutasi=$nomid', '_blank');
-  }
-})
-  });
-	</script>";
-	
-/*echo "<script>
-	Swal.fire({
-  title: 'Data telah di Mutasi',
-  text: 'klik OK untuk Cetak Bukti Mutasi',
-  icon: 'success',  
-}).then((result) => {
-  if (result.isConfirmed) {
-    	window.location='Mutasi';
-  }
-});
-	</script>";	*/
-}
-}
-?>
