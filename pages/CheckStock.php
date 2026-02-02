@@ -64,41 +64,42 @@ if ($Barcode !== '') {
   $kgNowDb2 = isset($rowdb21Cek['BASEPRIMARYQUANTITYUNIT']) ? round($rowdb21Cek['BASEPRIMARYQUANTITYUNIT'], 2) : null;
 }
 
-// Data upload aktif untuk zona/lokasi yang dipilih
-$ck0U = ['jml' => 0, 'id_upload' => null];
-$stmtCk0U = sqlsrv_query($con, "SELECT COUNT(*) AS jml, MAX(id_upload) AS id_upload FROM dbknitt.tbl_stokfull WHERE zone=? AND lokasi LIKE ?", [$Zone, $likeLokasi]);
-if ($stmtCk0U) {
-  $ck0U = sqlsrv_fetch_array($stmtCk0U, SQLSRV_FETCH_ASSOC) ?: $ck0U;
-}
-
-// Data SN di lokasi yang dipilih
-$ck0 = [];
-$stmtCk0 = sqlsrv_query($con, "SELECT TOP 1 * FROM dbknitt.tbl_stokfull WHERE zone=? AND lokasi LIKE ? AND SN=?", [$Zone, $likeLokasi, $Barcode]);
-if ($stmtCk0) {
-  $ck0 = sqlsrv_fetch_array($stmtCk0, SQLSRV_FETCH_ASSOC) ?: [];
-}
-
 // Proses scan/check
 if ($actionCek === "Cek" || $actionCari === "Cari") {
-  $ck = ['jml' => 0];
-  if ($Barcode !== '') {
-    $stmtCnt = sqlsrv_query($con, "SELECT COUNT(*) AS jml FROM dbknitt.tbl_stokfull WHERE SN=?", [$Barcode]);
-    if ($stmtCnt) {
-      $rowCnt = sqlsrv_fetch_array($stmtCnt, SQLSRV_FETCH_ASSOC);
-      $ck['jml'] = (int)($rowCnt['jml'] ?? 0);
-    }
-    $stmtDet = sqlsrv_query($con, "SELECT TOP 1 zone, lokasi, cones, KG, lot, id_upload, status FROM dbknitt.tbl_stokfull WHERE SN=?", [$Barcode]);
-    if ($stmtDet) {
-      $detail = sqlsrv_fetch_array($stmtDet, SQLSRV_FETCH_ASSOC);
-      if ($detail) {
-        $ck = array_merge($ck, $detail);
+    $ck = ['jml' => 0];
+    if ($Barcode !== '') {
+      $stmtCnt = sqlsrv_query($con, "SELECT COUNT(*) AS jml FROM dbknitt.tbl_stokfull WHERE SN=?", [$Barcode]);
+      if ($stmtCnt) {
+        $rowCnt = sqlsrv_fetch_array($stmtCnt, SQLSRV_FETCH_ASSOC);
+        $ck['jml'] = (int)($rowCnt['jml'] ?? 0);
+      }
+      $stmtDet = sqlsrv_query($con, "SELECT TOP 1 zone, lokasi, cones, KG, lot, id_upload, status FROM dbknitt.tbl_stokfull WHERE SN=?", [$Barcode]);
+      if ($stmtDet) {
+        $detail = sqlsrv_fetch_array($stmtDet, SQLSRV_FETCH_ASSOC);
+        if ($detail) {
+          $ck = array_merge($ck, $detail);
+          $Zone = $detail['zone'] ?? $Zone;
+          $Lokasi = $detail['lokasi'] ?? $Lokasi;
+        }
       }
     }
-  }
 
-  if ($Zone === "" && $Lokasi === "") {
-    echo "<script>alert('Zone atau Lokasi belum dipilih');</script>";
-  } elseif (is_numeric(trim($Barcode)) === true && $Barcode != "" && strlen($Barcode) == 13 && (substr($Barcode, 0, 2) == "15" || substr($Barcode, 0, 2) == "16" ||
+    $likeLokasi = $Lokasi !== '' ? $Lokasi . '%' : '%';
+    $ck0U = ['jml' => 0, 'id_upload' => null];
+    $stmtCk0U = sqlsrv_query($con, "SELECT COUNT(*) AS jml, MAX(id_upload) AS id_upload FROM dbknitt.tbl_stokfull WHERE zone=? AND lokasi LIKE ?", [$Zone, $likeLokasi]);
+    if ($stmtCk0U) {
+      $ck0U = sqlsrv_fetch_array($stmtCk0U, SQLSRV_FETCH_ASSOC) ?: $ck0U;
+    }
+
+    $ck0 = [];
+    $stmtCk0 = sqlsrv_query($con, "SELECT TOP 1 * FROM dbknitt.tbl_stokfull WHERE zone=? AND lokasi LIKE ? AND SN=?", [$Zone, $likeLokasi, $Barcode]);
+    if ($stmtCk0) {
+      $ck0 = sqlsrv_fetch_array($stmtCk0, SQLSRV_FETCH_ASSOC) ?: $ck0;
+    }
+
+    if ($Zone === "" && $Lokasi === "") {
+      echo "<script>alert('Zone atau Lokasi belum dipilih');</script>";
+    } elseif (is_numeric(trim($Barcode)) === true && $Barcode != "" && strlen($Barcode) == 13 && (substr($Barcode, 0, 2) == "15" || substr($Barcode, 0, 2) == "16" ||
     substr($Barcode, 0, 2) == "17" || substr($Barcode, 0, 2) == "18" ||
     substr($Barcode, 0, 2) == "19" || substr($Barcode, 0, 2) == "20" ||
     substr($Barcode, 0, 2) == "21" || substr($Barcode, 0, 2) == "22" ||
@@ -215,7 +216,7 @@ $ck2 = $stmtCk2 ? sqlsrv_fetch_array($stmtCk2, SQLSRV_FETCH_ASSOC) : ['jml' => 0
           <div class="input-group input-group-sm">
             <select class="form-control select2bs4" style="width: 80%;" name="zone">
               <option value="">Pilih</option>	 
-                <?php $sqlZ=sqlsrv_query($con," SELECT * FROM dbknitt.tbl_zone order by nama ASC"); 
+                <?php $sqlZ=sqlsrv_query($con," SELECT DISTINCT nama FROM dbknitt.tbl_zone order by nama ASC"); 
                   while($rZ=sqlsrv_fetch_array($sqlZ, SQLSRV_FETCH_ASSOC)){
                 ?>
               <option value="<?php echo $rZ['nama'];?>" <?php if($rZ['nama']==$Zone){ echo "SELECTED"; }?>><?php echo $rZ['nama'];?></option>
@@ -227,11 +228,11 @@ $ck2 = $stmtCk2 ? sqlsrv_fetch_array($stmtCk2, SQLSRV_FETCH_ASSOC) : ['jml' => 0
           </div>
         </div>
         <div class="form-group row">
-          <label for="lokasi" class="col-md-1">Location</label>
+          <label for="lokasi" class="col-md-1">Location <?=  $Lokasi  ?></label>
           <div class="input-group input-group-sm">
             <select class="form-control select2bs4" style="width: 80%;" name="lokasi">
               <option value="">Pilih</option>
-              <?php $sqlL=sqlsrv_query($con," SELECT * FROM dbknitt.tbl_lokasi WHERE zone='$Zone' order by nama ASC"); 
+              <?php $sqlL=sqlsrv_query($con," SELECT DISTINCT TRIM(nama) AS nama FROM dbknitt.tbl_lokasi WHERE zone='$Zone' order by nama ASC"); 
                 while($rL=sqlsrv_fetch_array($sqlL, SQLSRV_FETCH_ASSOC)){
               ?>
               <option value="<?php echo $rL['nama'];?>" <?php if($rL['nama']==$Lokasi){ echo "SELECTED"; }?>><?php echo $rL['nama'];?></option>
