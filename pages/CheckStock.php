@@ -214,7 +214,7 @@ $ck2 = $stmtCk2 ? sqlsrv_fetch_array($stmtCk2, SQLSRV_FETCH_ASSOC) : ['jml' => 0
         <div class="form-group row">
           <label for="zone" class="col-md-1">Zone</label>
           <div class="input-group input-group-sm">
-            <select class="form-control select2bs4" style="width: 80%;" name="zone">
+            <select class="form-control select2bs4" style="width: 80%;" name="zone" id="zone_select">
               <option value="">Pilih</option>	 
                 <?php $sqlZ=sqlsrv_query($con," SELECT DISTINCT nama FROM dbknitt.tbl_zone order by nama ASC"); 
                   while($rZ=sqlsrv_fetch_array($sqlZ, SQLSRV_FETCH_ASSOC)){
@@ -229,14 +229,9 @@ $ck2 = $stmtCk2 ? sqlsrv_fetch_array($stmtCk2, SQLSRV_FETCH_ASSOC) : ['jml' => 0
         </div>
         <div class="form-group row">
           <label for="lokasi" class="col-md-1">Location <?=  $Lokasi  ?></label>
-          <div class="input-group input-group-sm">
-            <select class="form-control select2bs4" style="width: 80%;" name="lokasi">
-              <option value="">Pilih</option>
-              <?php $sqlL=sqlsrv_query($con," SELECT DISTINCT TRIM(nama) AS nama FROM dbknitt.tbl_lokasi WHERE zone='$Zone' order by nama ASC"); 
-                while($rL=sqlsrv_fetch_array($sqlL, SQLSRV_FETCH_ASSOC)){
-              ?>
-              <option value="<?php echo $rL['nama'];?>" <?php if($rL['nama']==$Lokasi){ echo "SELECTED"; }?>><?php echo $rL['nama'];?></option>
-              <?php  } ?>
+          <div class="input-group input-group-sm" class="col-md-4">
+            <select class="form-control select2bs4" name="lokasi" id="lokasi_select">
+                <option value="">Pilih</option>
             </select>
             <span class="input-group-append">
               <button type="button" class="btn btn-warning btn-flat" data-toggle="modal" data-target="#DataLokasi"><i class="fa fa-plus"></i> </button>
@@ -479,6 +474,56 @@ $ck2 = $stmtCk2 ? sqlsrv_fetch_array($stmtCk2, SQLSRV_FETCH_ASSOC) : ['jml' => 0
   </div>
   <!-- /.modal-content -->
 </div>
+<script src="dist/js/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    function loadLokasi(zone, selectedLokasi = '') {
+        var lokasiDropdown = $('#lokasi_select');
+
+        if (!zone) {
+            lokasiDropdown.html('<option value="">Pilih</option>').trigger('change');
+            return;
+        }
+
+        $.ajax({
+            type: 'POST',
+            url: 'pages/ajax/get_lokasi.php',
+            data: { zone: zone },
+            beforeSend: function() {
+                lokasiDropdown
+                    .html('<option value="">Sedang memuat...</option>')
+                    .trigger('change');
+            },
+            success: function(response) {
+                lokasiDropdown.html(response);
+
+                if (selectedLokasi) {
+                    lokasiDropdown.val(selectedLokasi).trigger('change');
+                } else {
+                    lokasiDropdown.val('').trigger('change');
+                }
+            },
+            error: function() {
+                alert("Gagal mengambil data lokasi");
+            }
+        });
+    }
+
+    // 🔹 INITIAL LOAD (SETELAH POST)
+    var initialZone    = "<?= $Zone ?? '' ?>";
+    var initialLokasi  = "<?= $Lokasi ?? '' ?>";
+
+    if (initialZone) {
+        loadLokasi(initialZone, initialLokasi);
+    }
+
+    // 🔹 JIKA USER GANTI ZONE
+    $('#zone_select').on('change', function() {
+        var zoneName = $(this).val();
+        loadLokasi(zoneName);
+    });
+});
+</script>
 <script>
   $(function() {
     //Datepicker
