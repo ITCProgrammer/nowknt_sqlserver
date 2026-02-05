@@ -206,7 +206,23 @@ $c=0;
 	LISTAGG(DISTINCT TRIM(ISP.MANUFACTURINGDATE),', ') AS MANUFACTURINGDATE,
 	LISTAGG(DISTINCT TRIM(ISP.CREATIONDATETIME),', ') AS CREATIONDATETIME,
 	KET.VALUESTRING,
-	a2.VALUESTRING AS CODEWARNA
+	CASE
+		WHEN a2.VALUESTRING IS NOT NULL THEN
+			CASE a2.VALUESTRING
+				WHEN 1 THEN 'Merah'
+				WHEN 2 THEN 'Kuning'
+				WHEN 3 THEN 'Hijau'
+				WHEN 4 THEN 'Ungu'
+				WHEN 5 THEN 'Biru'
+				WHEN 6 THEN 'Putih'
+				WHEN 7 THEN 'Coklat'
+				WHEN 8 THEN 'Orange'
+				WHEN 9 THEN 'Cream'
+				WHEN 10 THEN 'Pink'
+				ELSE MAX(u.LONGDESCRIPTION)
+			END
+		ELSE MAX(u.LONGDESCRIPTION)
+	END AS CODEWARNA
 		FROM DB2ADMIN.BALANCE BALANCE  
 		LEFT JOIN STOCKTRANSACTION s 
                   ON BALANCE.ELEMENTSCODE = s.ITEMELEMENTCODE 
@@ -218,6 +234,10 @@ $c=0;
                   ON md.MRNHEADERCODE = mh.CODE
               LEFT JOIN ADSTORAGE a2     
               	  ON a2.UNIQUEID = mh.ABSUNIQUEID AND a2.NAMENAME = 'WARNA'
+		LEFT JOIN ADSTORAGE a3 ON
+			a3.UNIQUEID = mh.ABSUNIQUEID
+			AND a3.NAMENAME = 'WARNA1'
+		LEFT JOIN USERGENERICGROUP u ON u.CODE = a3.VALUESTRING
 		LEFT OUTER JOIN FULLITEMKEYDECODER F ON
 		BALANCE.ITEMTYPECODE = F.ITEMTYPECODE AND
 		BALANCE.DECOSUBCODE01 = F.SUBCODE01 AND
@@ -428,26 +448,7 @@ if($rowdb21['QUALITYLEVELCODE']=="1"){
       <td style="text-align: center"><?php echo $rowdb21['ITEMTYPECODE']; ?></td>
       <td style="text-align: left"><?php echo $kdbenang; ?></td>
       <td style="text-align: left"><?php echo $rowdb21['SUMMARIZEDDESCRIPTION']; ?></td>
-      <td style="text-align: left"><?php 
-			  	if ($rowdb21['CODEWARNA'] == "1") {
-                  echo "Merah";
-				} else if ($rowdb21['CODEWARNA'] == "2") {
-                  echo "Kuning";
-				} else if ($rowdb21['CODEWARNA'] == "3") {
-                  echo "Hijau";	
-				} else if ($rowdb21['CODEWARNA'] == "4") {
-                  echo "Ungu";
-				} else if ($rowdb21['CODEWARNA'] == "5") {
-                  echo "Biru";
-				} else if ($rowdb21['CODEWARNA'] == "6") {
-                  echo "Putih";	
-				} else if ($rowdb21['CODEWARNA'] == "7") {
-                  echo "Coklat";	
-				} else if ($rowdb21['CODEWARNA'] == "8") {
-                  echo "Orange";		
-                } else {
-                  echo "";
-                } ?></td>
+      <td style="text-align: left"><?php echo $rowdb21['CODEWARNA'];?></td>
       <td style="text-align: left"><?php echo $lotP; ?></td>
       <td style="text-align: center"><?php echo $rowdb21['LOTCODE']; ?></td>
       <td style="text-align: center"><?php echo $rowdb23['SUPPLIERCODE']; ?></td>
