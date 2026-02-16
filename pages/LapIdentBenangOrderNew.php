@@ -24,7 +24,8 @@ $sqlDB22PRO =" SELECT ITXVIEWKK.ORIGDLVSALORDLINESALORDERCODE FROM
 	GROUP BY pr.LONGDESCRIPTION,p.PRODUCTIONORDERCODE,pd.PROJECTCODE,pd.SUBCODE01,pd.SUBCODE02,pd.SUBCODE03,
 	pd.SUBCODE04,pd.SUBCODE05,pd.SUBCODE06,pd.SUBCODE07,pd.SUBCODE08,pd.ORIGDLVSALORDLINESALORDERCODE,ugp.LONGDESCRIPTION) ITXVIEWKK ON PRODUCTIONORDER.CODE=ITXVIEWKK.PRODUCTIONORDERCODE
  WHERE ITXVIEWKK.PRODUCTIONORDERCODE='$ProdOrder' ";	
-$stmt2PRO   = db2_exec($conn1,$sqlDB22PRO, array('cursor'=>DB2_SCROLLABLE));
+$stmt2PRO   = db2_prepare($conn1,$sqlDB22PRO);
+db2_execute($stmt2PRO);
 $rowdb22PRO = db2_fetch_assoc($stmt2PRO);
 ?>
 <!-- Main content -->
@@ -34,7 +35,7 @@ $rowdb22PRO = db2_fetch_assoc($stmt2PRO);
           <div class="col-md-3">	
 		<div class="card card-default">
           <div class="card-header">
-            <h3 class="card-title">Filter Identifikasi Benang Per Order New1</h3>
+            <h3 class="card-title">Filter Identifikasi Benang Per Order New</h3>
 
             <div class="card-tools">
               <button type="button" class="btn btn-tool" data-card-widget="collapse">
@@ -86,7 +87,7 @@ $rowdb22PRO = db2_fetch_assoc($stmt2PRO);
                     <th style="text-align: center; vertical-align: middle">%</th>
                     <th style="text-align: center; vertical-align: middle">Total Prod</th>
                     <th style="text-align: center; vertical-align: middle">Qty Butuh</th>
-                    <th style="text-align: center; vertical-align: middle">Qty Pakai</th>
+                    <th style="text-align: center; vertical-align: middle">Qty  Pakai</th>
                     <th style="text-align: center; vertical-align: middle">Whs</th>
                     <th style="text-align: center; vertical-align: middle">Issue Date</th>
                     <th style="text-align: center; vertical-align: middle">Loss</th>
@@ -95,50 +96,101 @@ $rowdb22PRO = db2_fetch_assoc($stmt2PRO);
         </thead>
                   <tbody>
 				  <?php					  
-$sqlDB22 =" SELECT
-	PRODUCTIONRESERVATION.GROUPLINE,
-	LISTAGG(TRIM(PRODUCTIONRESERVATION.ORDERCODE),', ') AS ORDERCODE,
-	PRODUCTIONRESERVATION.QUANTITYPER,
-	PRODUCTIONRESERVATION.SUBCODE01,
-	PRODUCTIONRESERVATION.SUBCODE02,
-	PRODUCTIONRESERVATION.SUBCODE03,
-	PRODUCTIONRESERVATION.SUBCODE04,
-	PRODUCTIONRESERVATION.SUBCODE05,
-	PRODUCTIONRESERVATION.SUBCODE06,
-	PRODUCTIONRESERVATION.SUBCODE07,
-	PRODUCTIONRESERVATION.SUBCODE08,
-	PRODUCTIONRESERVATION.FULLITEMIDENTIFIER,
-	PRODUCTIONRESERVATION.ISSUEDATE,
-	PRODUCTIONRESERVATION.WAREHOUSECODE,
-	SUM(PRODUCTIONRESERVATION.USERPRIMARYQUANTITY) AS USERPRIMARYQUANTITY,
-	SUM(PRODUCTIONRESERVATION.USEDBASEPRIMARYQUANTITY) AS USEDBASEPRIMARYQUANTITY,
-	FULLITEMKEYDECODER.SUMMARIZEDDESCRIPTION
-FROM
-	DB2ADMIN.PRODUCTIONRESERVATION
-LEFT OUTER JOIN DB2ADMIN.FULLITEMKEYDECODER FULLITEMKEYDECODER ON
-	PRODUCTIONRESERVATION.FULLITEMIDENTIFIER = FULLITEMKEYDECODER.IDENTIFIER
-WHERE
-	PRODUCTIONORDERCODE = '$ProdOrder'
-GROUP BY
-	 PRODUCTIONRESERVATION.GROUPLINE,
-	PRODUCTIONRESERVATION.QUANTITYPER,
-	PRODUCTIONRESERVATION.SUBCODE01,
-	PRODUCTIONRESERVATION.SUBCODE02,
-	PRODUCTIONRESERVATION.SUBCODE03,
-	PRODUCTIONRESERVATION.SUBCODE04,
-	PRODUCTIONRESERVATION.SUBCODE05,
-	PRODUCTIONRESERVATION.SUBCODE06,
-	PRODUCTIONRESERVATION.SUBCODE07,
-	PRODUCTIONRESERVATION.SUBCODE08,
-	PRODUCTIONRESERVATION.FULLITEMIDENTIFIER,
-	PRODUCTIONRESERVATION.ISSUEDATE,
-	PRODUCTIONRESERVATION.WAREHOUSECODE,
-	FULLITEMKEYDECODER.SUMMARIZEDDESCRIPTION
+$sqlDB22 =" WITH
+PR AS (
+  SELECT
+      GROUPLINE,
+      ORDERCODE,
+      QUANTITYPER,
+      SUBCODE01, SUBCODE02, SUBCODE03, SUBCODE04,
+      SUBCODE05, SUBCODE06, SUBCODE07, SUBCODE08,
+      FULLITEMIDENTIFIER,
+      ISSUEDATE,
+      WAREHOUSECODE,
+      USERPRIMARYQUANTITY,
+      USEDBASEPRIMARYQUANTITY,
+      PRODUCTIONORDERCODE
+  FROM DB2ADMIN.PRODUCTIONRESERVATION
+  WHERE PRODUCTIONORDERCODE = '$ProdOrder'
+),
+ST_AGG AS (
+  SELECT
+      st.ORDERCODE, 
+      st.ORDERLINE,
+      st.DECOSUBCODE01, st.DECOSUBCODE02, st.DECOSUBCODE03, st.DECOSUBCODE04,
+      st.DECOSUBCODE05, st.DECOSUBCODE06, st.DECOSUBCODE07, st.DECOSUBCODE08,
 
-ORDER BY GROUPLINE ASC
+      /* PAKAI */
+      COALESCE(COUNT(CASE WHEN st.ONHANDUPDATE > 1 THEN 1 END),0) AS PAKAI_QTY_DUS,
+      COALESCE(SUM  (CASE WHEN st.ONHANDUPDATE > 1 THEN st.BASEPRIMARYQUANTITY END),0) AS PAKAI_QTY_KG,
+      COALESCE(SUM  (CASE WHEN st.ONHANDUPDATE > 1 THEN st.BASESECONDARYQUANTITY END),0) AS PAKAI_QTY_CONES,
+
+      /* TURUNAN */
+      COALESCE(COUNT(CASE WHEN st.RETURNTRANSACTION = '1' THEN 1 END),0) AS TURUNAN_QTY_DUS,
+      COALESCE(SUM  (CASE WHEN st.RETURNTRANSACTION = '1' THEN st.BASEPRIMARYQUANTITY END),0) AS TURUNAN_QTY_KG,
+      COALESCE(SUM  (CASE WHEN st.RETURNTRANSACTION = '1' THEN st.BASESECONDARYQUANTITY END),0) AS TURUNAN_QTY_CONES
+
+  FROM DB2ADMIN.STOCKTRANSACTION st
+  WHERE st.ITEMTYPECODE IN ('GYR','DYR')
+    AND st.LOGICALWAREHOUSECODE IN ('P501','M501','M904')
+    AND st.ORDERCODE IS NOT NULL
+    AND st.ORDERCODE = '$ProdOrder'
+  GROUP BY
+      st.ORDERCODE, st.ORDERLINE,
+      st.DECOSUBCODE01, st.DECOSUBCODE02, st.DECOSUBCODE03, st.DECOSUBCODE04,
+      st.DECOSUBCODE05, st.DECOSUBCODE06, st.DECOSUBCODE07, st.DECOSUBCODE08
+)
+
+SELECT
+    pr.GROUPLINE,
+    LISTAGG(TRIM(pr.ORDERCODE), ', ')
+      WITHIN GROUP (ORDER BY pr.ORDERCODE) AS ORDERCODE,
+    pr.QUANTITYPER,
+    pr.SUBCODE01, pr.SUBCODE02, pr.SUBCODE03, pr.SUBCODE04,
+    pr.SUBCODE05, pr.SUBCODE06, pr.SUBCODE07, pr.SUBCODE08,
+    pr.FULLITEMIDENTIFIER,
+    pr.ISSUEDATE,
+    pr.WAREHOUSECODE,
+
+    COALESCE(SUM(pr.USERPRIMARYQUANTITY),0)     AS USERPRIMARYQUANTITY,
+    COALESCE(SUM(pr.USEDBASEPRIMARYQUANTITY),0) AS USEDBASEPRIMARYQUANTITY,
+
+    COALESCE(st.PAKAI_QTY_KG,0)   AS QTY_PAKAI,
+    COALESCE(st.TURUNAN_QTY_KG,0) AS QTY_TURUNAN,
+
+    fik.SUMMARIZEDDESCRIPTION
+
+FROM PR pr
+LEFT JOIN DB2ADMIN.FULLITEMKEYDECODER fik
+  ON pr.FULLITEMIDENTIFIER = fik.IDENTIFIER
+LEFT JOIN ST_AGG st
+  ON pr.PRODUCTIONORDERCODE = st.ORDERCODE
+ AND pr.GROUPLINE = st.ORDERLINE 
+ AND pr.SUBCODE01 = st.DECOSUBCODE01
+ AND pr.SUBCODE02 = st.DECOSUBCODE02
+ AND pr.SUBCODE03 = st.DECOSUBCODE03
+ AND pr.SUBCODE04 = st.DECOSUBCODE04
+ AND pr.SUBCODE05 = st.DECOSUBCODE05
+ AND pr.SUBCODE06 = st.DECOSUBCODE06
+ AND pr.SUBCODE07 = st.DECOSUBCODE07
+ AND pr.SUBCODE08 = st.DECOSUBCODE08
+
+GROUP BY
+    pr.GROUPLINE,
+    pr.QUANTITYPER,
+    pr.SUBCODE01, pr.SUBCODE02, pr.SUBCODE03, pr.SUBCODE04,
+    pr.SUBCODE05, pr.SUBCODE06, pr.SUBCODE07, pr.SUBCODE08,
+    pr.FULLITEMIDENTIFIER,
+    pr.ISSUEDATE,
+    pr.WAREHOUSECODE,
+    fik.SUMMARIZEDDESCRIPTION,
+    st.PAKAI_QTY_KG,
+    st.TURUNAN_QTY_KG
+
+ORDER BY pr.GROUPLINE ASC;
 	   ";	
-$stmt2   = db2_exec($conn1,$sqlDB22, array('cursor'=>DB2_SCROLLABLE));
-					  
+$stmt2   = db2_prepare($conn1,$sqlDB22);
+db2_execute($stmt2);					  
 $no=1; 
 $c=0;
 $losskg1="";					  
@@ -160,7 +212,8 @@ DECOSUBCODE07='$rowdb22[SUBCODE07]' AND
 DECOSUBCODE08='$rowdb22[SUBCODE08]'
 
 	";
-	$st101   = db2_exec($conn1,$Sdb201, array('cursor'=>DB2_SCROLLABLE));
+	$st101   = db2_prepare($conn1,$Sdb201);
+	db2_execute($st101); 
 	$rdb201 = db2_fetch_assoc($st101);	 
 $Sdb211="
 	SELECT sum(BASEPRIMARYQUANTITYUNIT) AS TOTALSTK
@@ -175,7 +228,8 @@ DECOSUBCODE06='$rowdb22[SUBCODE06]' AND
 DECOSUBCODE07='$rowdb22[SUBCODE07]' AND
 DECOSUBCODE08='$rowdb22[SUBCODE08]'
 	";
-	$st111   = db2_exec($conn1,$Sdb211, array('cursor'=>DB2_SCROLLABLE));
+	$st111   = db2_prepare($conn1,$Sdb211);
+	db2_execute($st111); 
 	$rdb211 = db2_fetch_assoc($st111);	 
 $Sdb221="
 	SELECT sum(BASEPRIMARYQUANTITYUNIT) AS TOTALSTK
@@ -190,11 +244,12 @@ DECOSUBCODE06='$rowdb22[SUBCODE06]' AND
 DECOSUBCODE07='$rowdb22[SUBCODE07]' AND
 DECOSUBCODE08='$rowdb22[SUBCODE08]'
 	";
-	$st121   = db2_exec($conn1,$Sdb221, array('cursor'=>DB2_SCROLLABLE));
+	$st121   = db2_prepare($conn1,$Sdb221);
 	$rdb221 = db2_fetch_assoc($st121);
 
 $sqlDB21L = " SELECT sum(s.BASEPRIMARYQUANTITY) AS KGPAKAI FROM STOCKTRANSACTION s WHERE s.TEMPLATECODE='120' AND (s.ITEMTYPECODE='GYR' OR s.ITEMTYPECODE='DYR') AND s.ORDERCODE='$ProdOrder' ";
-	 $stmt1L   = db2_exec($conn1,$sqlDB21L, array('cursor'=>DB2_SCROLLABLE));
+	 $stmt1L   = db2_prepare($conn1,$sqlDB21L);
+	 db2_execute($stmt1L);
 	 $rowdb21L = db2_fetch_assoc($stmt1L);	 
 	 
 $sqlDB22L = " SELECT 
@@ -215,7 +270,8 @@ GROUP BY PRODUCTIONORDERCODE
 WHERE (STOCKTRANSACTION.ITEMTYPECODE ='GYR' OR STOCKTRANSACTION.ITEMTYPECODE ='DYR') and (STOCKTRANSACTION.LOGICALWAREHOUSECODE ='P501' OR STOCKTRANSACTION.LOGICALWAREHOUSECODE ='M501' OR STOCKTRANSACTION.LOGICALWAREHOUSECODE ='M904') AND
 	STOCKTRANSACTION.RETURNTRANSACTION ='1' AND STOCKTRANSACTION.ORDERCODE='$ProdOrder' AND NOT STOCKTRANSACTION.ORDERCODE IS NULL
 	GROUP BY STOCKTRANSACTION.ORDERCODE ";
-	 $stmt2L   = db2_exec($conn1,$sqlDB22L, array('cursor'=>DB2_SCROLLABLE));
+	 $stmt2L   = db2_prepare($conn1,$sqlDB22L);
+	 db2_execute($stmt2L);
 	 $rowdb22L = db2_fetch_assoc($stmt2L);
 	 
 $sqlDB22G =" SELECT
@@ -229,7 +285,8 @@ WHERE
 GROUP BY
 	PRODUCTIONRESERVATION.ORDERCODE
 	   ";	
-$stmt2G   = db2_exec($conn1,$sqlDB22G, array('cursor'=>DB2_SCROLLABLE));
+$stmt2G   = db2_prepare($conn1,$sqlDB22G);
+db2_execute($stmt2G);	 
 $prdqty	= 0;	 
 while ($rowdb22G = db2_fetch_assoc($stmt2G)) {	 
 $sqlDB2IN =" SELECT i.PRODUCTIONDEMANDCODE,i.PRODUCTIONORDERCODE,count(e.WEIGHTREALNET) AS INSROL,sum(e.WEIGHTREALNET) AS INSKG,
@@ -243,7 +300,8 @@ LEFT OUTER JOIN ADSTORAGE ad ON ad.UNIQUEID = pd.ABSUNIQUEID AND ad.NAMENAME ='M
 WHERE i.ITEMTYPEAFICODE ='KGF'  AND pd.CODE ='$rowdb22G[ORDERCODE]'
 GROUP BY i.PRODUCTIONDEMANDCODE,i.FINALEFFECTIVEDATE,ad.VALUESTRING,  
 i.LEGALNAME1,i.SUBCODE02,i.SUBCODE03,i.SUBCODE04,i.PROJECTCODE,i.PRODUCTIONORDERCODE  ";	
-$stmtIN   = db2_exec($conn1,$sqlDB2IN, array('cursor'=>DB2_SCROLLABLE));	 
+$stmtIN   = db2_prepare($conn1,$sqlDB2IN);	 
+db2_execute($stmtIN);	
 $rowdb2IN = db2_fetch_assoc($stmtIN);
 	 $ord=$rowdb22G['ORDERCODE'];
 	 $sql=sqlsrv_query($con," SELECT SUM(berat_awal) as berat_awal FROM dbknitt.tbl_inspeksi_detail_now tidn WHERE tidn.demandno='$rowdb22G[ORDERCODE]' and tidn.ket_bs ='BS Mekanik'");
@@ -268,8 +326,8 @@ $rowdb2IN = db2_fetch_assoc($stmtIN);
 	 $hslkg=$rowdb2IN['INSKG']+$rowdb22L['KGSISA']+$rowd['berat_awal']+$rowd1['berat_awal']+$rowd2['berat_awal'];
 	 $kghslPro=$rowdb2IN['INSKG']+$prdqty;
 	 $losskg=round($rowdb21L['KGPAKAI']-$hslkg,2);
-	 $losskg1=round($rowdb22['USEDBASEPRIMARYQUANTITY'],2)-round(($rowdb22['QUANTITYPER']*$kghslPro),2);
-	 $losskg12=$rowdb22['USEDBASEPRIMARYQUANTITY']-($rowdb22['QUANTITYPER']*$kghslPro);
+	 $losskg1=round($rowdb22['QTY_PAKAI']-$rowdb22['QTY_TURUNAN'],2)-round(($rowdb22['QUANTITYPER']*$kghslPro),2);
+	 $losskg12=($rowdb22['QTY_PAKAI']-$rowdb22['QTY_TURUNAN'])-($rowdb22['QUANTITYPER']*$kghslPro);
 //	 if($rowdb21L['KGPAKAI']!= 0 and $rowdb2IN['INSKG']!= 0 and $rowdb22L['KGSISA']!= 0){ 
 //	 $prsnLoss=round(($losskg/($rowdb21L['KGPAKAI']-$rowdb22L['KGSISA']))*100,2);
 //	 $prsnLoss1=round(($losskg12/($rowdb21L['KGPAKAI']-$rowdb22L['KGSISA']))*100,2); 	 
@@ -305,7 +363,7 @@ $rowdb2IN = db2_fetch_assoc($stmtIN);
       <td style="text-align: right"><?php echo $persen; ?></td>
       <td style="text-align: right"><?php echo $kghslPro; ?></td>
       <td style="text-align: right"><?php echo number_format(round(($rowdb22['QUANTITYPER']*$kghslPro),2),2) ?> Kgs</td>
-      <td style="text-align: right"><?php echo number_format(round($rowdb22['USEDBASEPRIMARYQUANTITY'],2),2); ?> Kgs</td>
+      <td style="text-align: right"><?php echo number_format(round($rowdb22['QTY_PAKAI']-$rowdb22['QTY_TURUNAN'],2),2); ?> Kgs</td>
       <td style="text-align: right"><?php echo $rowdb22['WAREHOUSECODE']; ?></td>
       <td style="text-align: center"><?php echo $rowdb22['ISSUEDATE']; ?></td>
       <td style="text-align: right"><?php //echo round($losskg1T,3);
@@ -318,6 +376,7 @@ $rowdb2IN = db2_fetch_assoc($stmtIN);
 	 	$tlkg+=round($losskg1,3);
 	 	$tprl+=round($prsnLoss1T,3);
 	 	$tqp+=round($rowdb22['USEDBASEPRIMARYQUANTITY'],2);
+	 	$tqap+=round($rowdb22['QTY_PAKAI']-$rowdb22['QTY_TURUNAN'],2);
 	 	$tqb+=round(($rowdb22['QUANTITYPER']*$kghslPro),2);
  } ?>
 				  </tbody>
@@ -331,7 +390,7 @@ $rowdb2IN = db2_fetch_assoc($stmtIN);
 	    <td style="text-align: right"><?php echo $tper; ?></td>
 	    <td style="text-align: right">&nbsp;</td>
 	    <td style="text-align: right"><?php echo $tqb; ?></td>
-	    <td style="text-align: right"><?php echo $tqp; ?></td>
+	    <td style="text-align: right"><?php echo $tqap; ?></td>
 	    <td style="text-align: right">&nbsp;</td>
 	    <td style="text-align: center">&nbsp;</td>
 	    <td style="text-align: right"><?php echo round($tlkg,3); ?></td>
@@ -344,6 +403,7 @@ $rowdb2IN = db2_fetch_assoc($stmtIN);
           </div>	
 			</div>	
 		</div>
+		<?php if($ProdOrder <> ''){ ?>	
 		<div class="card card-success">
               <div class="card-header">
                 <h3 class="card-title">Benang Per Mesin</h3>
@@ -388,7 +448,8 @@ LEFT OUTER JOIN ADSTORAGE ad ON ad.UNIQUEID = pd.ABSUNIQUEID AND ad.NAMENAME ='M
 WHERE  (i.PROGRESSSTATUS='2' OR i.PROGRESSSTATUS='6') AND i.ITEMTYPEAFICODE ='KGF' AND i.PRODUCTIONORDERCODE='$ProdOrder' 
 GROUP BY i.PRODUCTIONDEMANDCODE,i.FINALEFFECTIVEDATE,ad.VALUESTRING,  
 i.LEGALNAME1,i.SUBCODE01,i.SUBCODE02,i.SUBCODE03,i.SUBCODE04,i.PROJECTCODE,i.PRODUCTIONORDERCODE ";	
-$stmt   = db2_exec($conn1,$sqlDB2, array('cursor'=>DB2_SCROLLABLE));
+$stmt   = db2_prepare($conn1,$sqlDB2);
+db2_execute($stmt);					  
 $no=1;   
 $c=0;
 $prsn=0;
@@ -397,7 +458,8 @@ $prsn2=0;
  while ($rowdb2 = db2_fetch_assoc($stmt)) {
 	 
 	 $sqlDB21 = " SELECT sum(s.BASEPRIMARYQUANTITY) AS KGPAKAI FROM STOCKTRANSACTION s WHERE s.TEMPLATECODE='120' AND (s.ITEMTYPECODE='GYR' OR s.ITEMTYPECODE='DYR') AND s.ORDERCODE='$rowdb2[PRODUCTIONORDERCODE]' ";
-	 $stmt1   = db2_exec($conn1,$sqlDB21, array('cursor'=>DB2_SCROLLABLE));
+	 $stmt1   = db2_prepare($conn1,$sqlDB21);
+	 db2_execute($stmt1);
 	 $rowdb21 = db2_fetch_assoc($stmt1);
 	 
 	 /*$sqlDB22 = " SELECT sum(s.WEIGHTREALNET) AS KGSISA FROM STOCKTRANSACTION s WHERE s.TEMPLATECODE='125' AND s.ITEMTYPECODE='GYR' AND s.ORDERCODE='$rowdb2[PRODUCTIONORDERCODE]' ";
@@ -422,7 +484,8 @@ WHERE (STOCKTRANSACTION.ITEMTYPECODE ='GYR' OR STOCKTRANSACTION.ITEMTYPECODE ='D
 	GROUP BY STOCKTRANSACTION.ORDERCODE
 	
 	";
-	 $stmt2   = db2_exec($conn1,$sqlDB22, array('cursor'=>DB2_SCROLLABLE));
+	 $stmt2   = db2_prepare($conn1,$sqlDB22);
+	 db2_execute($stmt2);
 	 $rowdb22 = db2_fetch_assoc($stmt2);
 	 
 	 $sqlDB23 = " SELECT FULLITEMKEYDECODER.SUMMARIZEDDESCRIPTION
@@ -437,7 +500,8 @@ WHERE (STOCKTRANSACTION.ITEMTYPECODE ='GYR' OR STOCKTRANSACTION.ITEMTYPECODE ='D
 	 AND BOMCOMPONENT.BILLOFMATERIALSUBCODE03 ='$rowdb2[SUBCODE03]'
 	 AND BOMCOMPONENT.BILLOFMATERIALSUBCODE04 ='$rowdb2[SUBCODE04]'
 	 AND PRODUCTIONRESERVATION.ORDERCODE ='$rowdb2[PRODUCTIONDEMANDCODE]' ";
-	 $stmt3   = db2_exec($conn1,$sqlDB23, array('cursor'=>DB2_SCROLLABLE));
+	 $stmt3   = db2_prepare($conn1,$sqlDB23);
+	 db2_execute($stmt3);
 	 //$rowdb23 = db2_fetch_assoc($stmt3);
 	 $sqlDB24 = " SELECT
 	COUNT(PRODUCTIONDEMANDCODE) AS JDMN, PROGRESSSTATUS 
@@ -449,7 +513,8 @@ GROUP BY
 	PRODUCTIONORDERCODE,PROGRESSSTATUS
 ORDER BY PROGRESSSTATUS ASC
  ";
-	 $stmt4   = db2_exec($conn1,$sqlDB24, array('cursor'=>DB2_SCROLLABLE));
+	 $stmt4   = db2_prepare($conn1,$sqlDB24);
+	 db2_execute($stmt4);
 	 $rowdb24 = db2_fetch_assoc($stmt4);
 	 if($rowdb24['JDMN']>1 and $rowdb24['PROGRESSSTATUS']=="2"){
 		 $stsgabung= "<small class='badge badge-danger'><i class='fas fa-exclamation-triangle text-warning blink_me'></i> Gabung Order</small>";
@@ -575,6 +640,7 @@ ORDER BY PROGRESSSTATUS ASC
                     <th valign="middle" style="text-align: center">User</th>
                     <th valign="middle" style="text-align: center">KNITT</th>
                     <th valign="middle" style="text-align: center">Project</th>
+                    <th valign="middle" style="text-align: center">Line</th>
                     <th valign="middle" style="text-align: center">Prod. Order</th>
                     <th valign="middle" style="text-align: center">Code</th>
                     <th valign="middle" style="text-align: center">LOT</th>
@@ -592,6 +658,7 @@ ORDER BY PROGRESSSTATUS ASC
 	$sqlDB21PB = "SELECT 
 	STOCKTRANSACTION.TRANSACTIONNUMBER,
 	STOCKTRANSACTION.ORDERCODE,
+	STOCKTRANSACTION.ORDERLINE,
 	STOCKTRANSACTION.LOGICALWAREHOUSECODE,
 	STOCKTRANSACTION.DECOSUBCODE01,
 	STOCKTRANSACTION.DECOSUBCODE02,
@@ -627,6 +694,7 @@ STOCKTRANSACTION.ONHANDUPDATE >1 AND ORDERCODE='$ProdOrder' AND NOT ORDERCODE IS
 GROUP BY
 	STOCKTRANSACTION.TRANSACTIONNUMBER,
     STOCKTRANSACTION.ORDERCODE,
+	STOCKTRANSACTION.ORDERLINE,
 	STOCKTRANSACTION.LOGICALWAREHOUSECODE,
 	STOCKTRANSACTION.DECOSUBCODE01,
 	STOCKTRANSACTION.DECOSUBCODE02,
@@ -642,7 +710,8 @@ GROUP BY
 	MCN.NOMC,
 	FULLITEMKEYDECODER.SUMMARIZEDDESCRIPTION
 ";
-	$stmt1PB   = db2_exec($conn1,$sqlDB21PB, array('cursor'=>DB2_SCROLLABLE));
+	$stmt1PB   = db2_prepare($conn1,$sqlDB21PB);
+	db2_execute($stmt1PB);				  
 	//}				  
     while($rowdb21PB = db2_fetch_assoc($stmt1PB)){ 
 if (trim($rowdb21PB['LOGICALWAREHOUSECODE']) =='M501' or trim($rowdb21PB['LOGICALWAREHOUSECODE']) =='M904') { $knittPB = 'LT2'; }
@@ -653,7 +722,8 @@ $sqlDB22PB = " SELECT TRANSACTIONDATE,TRANSACTIONTIME FROM STOCKTRANSACTION WHER
 (STOCKTRANSACTION.ITEMTYPECODE ='GYR' OR STOCKTRANSACTION.ITEMTYPECODE ='DYR') and (STOCKTRANSACTION.LOGICALWAREHOUSECODE ='P501' OR STOCKTRANSACTION.LOGICALWAREHOUSECODE ='M501' OR STOCKTRANSACTION.LOGICALWAREHOUSECODE ='M904') AND
 STOCKTRANSACTION.ONHANDUPDATE >1 AND STOCKTRANSACTION.TRANSACTIONDATE='$rowdb21PB[TRANSACTIONDATE]' 
 AND STOCKTRANSACTION.ORDERCODE='$rowdb21PB[ORDERCODE]' AND STOCKTRANSACTION.CREATIONUSER='$rowdb21PB[CREATIONUSER]' ";
-$stmt2PB   = db2_exec($conn1,$sqlDB22PB, array('cursor'=>DB2_SCROLLABLE));
+$stmt2PB   = db2_prepare($conn1,$sqlDB22PB);
+db2_execute($stmt2PB);		
 $rowdb22PB = db2_fetch_assoc($stmt2PB);		
 if($rowdb22PB['TRANSACTIONTIME']>="07:00:00" and $rowdb22PB['TRANSACTIONTIME']<="15:00:00"){
 	$shfPB="1";
@@ -685,7 +755,8 @@ $sqlDB22PROPB =" SELECT ITXVIEWKK.PROJECTCODE,ITXVIEWKK.ORIGDLVSALORDLINESALORDE
 	GROUP BY pr.LONGDESCRIPTION,p.PRODUCTIONORDERCODE,pd.PROJECTCODE,pd.SUBCODE01,pd.SUBCODE02,pd.SUBCODE03,
 	pd.SUBCODE04,pd.SUBCODE05,pd.SUBCODE06,pd.SUBCODE07,pd.SUBCODE08,ugp.LONGDESCRIPTION,pd.ORIGDLVSALORDLINESALORDERCODE) ITXVIEWKK ON PRODUCTIONORDER.CODE=ITXVIEWKK.PRODUCTIONORDERCODE
  WHERE ITXVIEWKK.PRODUCTIONORDERCODE='$rowdb21PB[ORDERCODE]' ";	
-$stmt2PROPB   = db2_exec($conn1,$sqlDB22PROPB, array('cursor'=>DB2_SCROLLABLE));
+$stmt2PROPB   = db2_prepare($conn1,$sqlDB22PROPB);
+db2_execute($stmt2PROPB);		
 $rowdb22PROPB = db2_fetch_assoc($stmt2PROPB);
 		
 $sqlKtPB=sqlsrv_query($con," SELECT TOP 1 no_mesin FROM dbknitt.tbl_mesin WHERE kd_dtex='".$msinPB."'");
@@ -698,6 +769,7 @@ $rkPB=sqlsrv_fetch_array($sqlKtPB);
 	  <td style="text-align: center"><?php echo $rowdb21PB['CREATIONUSER']; ?></td>
       <td style="text-align: center"><?php echo $knittPB; ?></td>
       <td style="text-align: center"><?php if($rowdb22PROPB['PROJECTCODE']!=""){echo $rowdb22PROPB['PROJECTCODE'];}else{echo $rowdb22PROPB['ORIGDLVSALORDLINESALORDERCODE'];} ?></td>
+      <td style="text-align: center"><?php echo $rowdb21PB['ORDERLINE']; ?></td>
       <td style="text-align: center"><a href="#" id="<?php echo trim($rowdb21PB['TRANSACTIONNUMBER'])."*".trim($rowdb21PB['ORDERCODE'])."*".trim($rowdb21PB['TRANSACTIONDATE'])."*".trim($rowdb21PB['CREATIONUSER'])."*".trim($rowdb21PB['LOTCODE'])."*".trim($kdbenangPB); ?>" class="show_detailPakai"><?php echo $rowdb21PB['ORDERCODE']; ?></a></td>
       <td><?php echo $kdbenangPB; ?></td> 
       <td style="text-align: center"><?php echo $rowdb21PB['LOTCODE']; ?></td>
@@ -716,6 +788,7 @@ $rkPB=sqlsrv_fetch_array($sqlKtPB);
 				  </tbody>
       <tfoot>
 		<tr>
+	    <td style="text-align: center">&nbsp;</td>
 	    <td style="text-align: center">&nbsp;</td>
 	    <td style="text-align: center">&nbsp;</td>
 	    <td style="text-align: center">&nbsp;</td>
@@ -751,6 +824,7 @@ $rkPB=sqlsrv_fetch_array($sqlKtPB);
                     <th valign="middle" style="text-align: center">Shift</th>
                     <th valign="middle" style="text-align: center">User</th>
                     <th valign="middle" style="text-align: center">KNITT</th>
+                    <th valign="middle" style="text-align: center">Line</th>
                     <th valign="middle" style="text-align: center">No PO</th>
                     <th valign="middle" style="text-align: center">Code</th>
                     <th valign="middle" style="text-align: center">LOT</th>
@@ -769,6 +843,7 @@ $c=0;
 	SELECT 
 	STOCKTRANSACTION.TRANSACTIONNUMBER,
 	STOCKTRANSACTION.ORDERCODE,
+	STOCKTRANSACTION.ORDERLINE,
 	STOCKTRANSACTION.LOGICALWAREHOUSECODE,
 	STOCKTRANSACTION.DECOSUBCODE01,
 	STOCKTRANSACTION.DECOSUBCODE02,
@@ -803,6 +878,7 @@ STOCKTRANSACTION.RETURNTRANSACTION ='1' AND STOCKTRANSACTION.ORDERCODE='$ProdOrd
 GROUP BY 
 	STOCKTRANSACTION.TRANSACTIONNUMBER,
     STOCKTRANSACTION.ORDERCODE,
+    STOCKTRANSACTION.ORDERLINE,
 	STOCKTRANSACTION.LOGICALWAREHOUSECODE,
 	STOCKTRANSACTION.DECOSUBCODE01,
 	STOCKTRANSACTION.DECOSUBCODE02,
@@ -819,7 +895,8 @@ GROUP BY
 	INITIALS.LONGDESCRIPTION,
 	KD.NOMC	
 ";
-	$stmt1   = db2_exec($conn1,$sqlDB21, array('cursor'=>DB2_SCROLLABLE));
+	$stmt1   = db2_prepare($conn1,$sqlDB21);
+	db2_execute($stmt1);				  
 	//}				  
     while($rowdb21 = db2_fetch_assoc($stmt1)){ 
 if (trim($rowdb21['LOGICALWAREHOUSECODE']) =='M501' or trim($rowdb21['LOGICALWAREHOUSECODE']) =='M904') { $knitt = 'LT2'; }
@@ -829,7 +906,8 @@ $kdbenang=trim($rowdb21['DECOSUBCODE01'])." ".trim($rowdb21['DECOSUBCODE02'])." 
 $sqlDB22 = " SELECT TRANSACTIONDATE,TRANSACTIONTIME FROM STOCKTRANSACTION WHERE (STOCKTRANSACTION.ITEMTYPECODE ='GYR' OR STOCKTRANSACTION.ITEMTYPECODE ='DYR') and (STOCKTRANSACTION.LOGICALWAREHOUSECODE ='P501' OR STOCKTRANSACTION.LOGICALWAREHOUSECODE ='M501' OR STOCKTRANSACTION.LOGICALWAREHOUSECODE ='M904') AND
 STOCKTRANSACTION.RETURNTRANSACTION ='1' AND STOCKTRANSACTION.TRANSACTIONDATE='$rowdb21[TRANSACTIONDATE]' 
 AND STOCKTRANSACTION.ORDERCODE='$rowdb21[ORDERCODE]' AND STOCKTRANSACTION.CREATIONUSER='$rowdb21[CREATIONUSER]' ";
-$stmt2   = db2_exec($conn1,$sqlDB22, array('cursor'=>DB2_SCROLLABLE));
+$stmt2   = db2_prepare($conn1,$sqlDB22);
+db2_execute($stmt2);		
 $rowdb22 = db2_fetch_assoc($stmt2);		
 if($rowdb22['TRANSACTIONTIME']>="07:00:00" and $rowdb22['TRANSACTIONTIME']<="15:00:00"){
 	$shf="1";
@@ -852,6 +930,7 @@ if($rowdb21['LONGDESCRIPTION']!=""){$uid=trim($rowdb21['LONGDESCRIPTION']);}else
 	  <td style="text-align: center"><?php echo $shf; ?></td>
 	  <td style="text-align: center"><?php  echo $uid; ?></td>
       <td style="text-align: center"><?php echo $knitt; ?></td>
+      <td style="text-align: center"><?php echo $rowdb21['ORDERLINE']; ?></td>
       <td style="text-align: center"><a href="#" id="<?php echo trim($rowdb21['ORDERCODE'])."*".trim($rowdb21['TRANSACTIONDATE'])."*".$uid."*".trim($rowdb21['LOTCODE'])."*".trim($kdbenang); ?>" class="show_detailTurunan"><?php echo $rowdb21['ORDERCODE']; ?></a></td>
       <td><?php echo $kdbenang; ?></td> 
       <td style="text-align: center"><?php echo $rowdb21['LOTCODE']; ?></td>
@@ -872,6 +951,7 @@ if($rowdb21['LONGDESCRIPTION']!=""){$uid=trim($rowdb21['LONGDESCRIPTION']);}else
 				  </tbody>
      <tfoot>
 	 <tr>
+	    <td style="text-align: center">&nbsp;</td>
 	    <td style="text-align: center">&nbsp;</td>
 	    <td style="text-align: center">&nbsp;</td>
 	    <td style="text-align: center">&nbsp;</td>
@@ -907,7 +987,8 @@ if($rowdb21['LONGDESCRIPTION']!=""){$uid=trim($rowdb21['LONGDESCRIPTION']);}else
 						$sqlDB2 =" SELECT * FROM DB2ADMIN.PRODUCTIONRESERVATION 
 						WHERE PRODUCTIONORDERCODE ='$ProdOrder'
 						ORDER BY BOMCOMPSEQUENCE ASC";	
-						$stmt   = db2_exec($conn1,$sqlDB2, array('cursor'=>DB2_SCROLLABLE));
+						$stmt   = db2_prepare($conn1,$sqlDB2);
+						db2_execute($stmt);
 						while($rowdb = db2_fetch_assoc($stmt)){						$kdb=trim($rowdb['SUBCODE01']).trim($rowdb['SUBCODE02']).trim($rowdb['SUBCODE03']).trim($rowdb['SUBCODE04']).trim($rowdb['SUBCODE05']).trim($rowdb['SUBCODE06']).trim($rowdb['SUBCODE07']).trim($rowdb['SUBCODE08']);
 						?>
 						<option value="<?php echo $kdb;?>" <?php if($KdBng==$kdb){ echo "SELECTED";}?>><?php echo $kdb;?></option>
@@ -1013,7 +1094,8 @@ STOCKTRANSACTION.CREATIONUSER,
 BALANCE.WHSLOCATIONWAREHOUSEZONECODE,
 BALANCE.WAREHOUSELOCATIONCODE,
 FULLITEMKEYDECODER.SUMMARIZEDDESCRIPTION";
-	$stmt1   = db2_exec($conn1,$sqlDB21, array('cursor'=>DB2_SCROLLABLE));
+	$stmt1   = db2_prepare($conn1,$sqlDB21);
+	db2_execute($stmt1);				  
 	//}				  
     while($rowdb21 = db2_fetch_assoc($stmt1)){ 
 $bon=trim($rowdb21['INTDOCUMENTPROVISIONALCODE'])."-".trim($rowdb21['ORDERLINE']);
@@ -1032,7 +1114,8 @@ if (trim($rowdb21['PROVISIONALCOUNTERCODE']) =='I02M50') { $knitt = 'KNITTING IT
 		AND STOCKTRANSACTION.ORDERLINE ='$rowdb21[ORDERLINE]' AND STOCKTRANSACTION.TRANSACTIONNUMBER='$rowdb21[TRANSACTIONNUMBER]' 
 		AND STOCKTRANSACTION.LOTCODE='$rowdb21[LOTCODE]'
 		GROUP BY BALANCE.LOTCODE ";					  
-		$stmt2   = db2_exec($conn1,$sqlDB22, array('cursor'=>DB2_SCROLLABLE));	
+		$stmt2   = db2_prepare($conn1,$sqlDB22);
+		db2_execute($stmt2);
 		$rowdb22 = db2_fetch_assoc($stmt2);
 		$sqlDB23 = " SELECT PRODUCT.LONGDESCRIPTION,PRODUCT.SHORTDESCRIPTION 
 	   FROM DB2ADMIN.PRODUCT PRODUCT WHERE
@@ -1044,7 +1127,8 @@ if (trim($rowdb21['PROVISIONALCOUNTERCODE']) =='I02M50') { $knitt = 'KNITTING IT
        PRODUCT.SUBCODE05='".trim($rowdb21['DECOSUBCODE05'])."' AND
 	   PRODUCT.SUBCODE06='".trim($rowdb21['DECOSUBCODE06'])."' AND
        PRODUCT.SUBCODE07='".trim($rowdb21['DECOSUBCODE07'])."' ";
-	   $stmt3   = db2_exec($conn1,$sqlDB23, array('cursor'=>DB2_SCROLLABLE));
+	   $stmt3   = db2_prepare($conn1,$sqlDB23);
+	   db2_execute($stmt3);	
 	   $rowdb23 = db2_fetch_assoc($stmt3);
 	   $sqlDB2S = "SELECT COUNT(BALANCE.BASEPRIMARYQUANTITYUNIT) AS ROL,SUM(BALANCE.BASEPRIMARYQUANTITYUNIT) AS BERAT, SUM(BALANCE.BASESECONDARYQUANTITYUNIT) AS CONES, BALANCE.LOTCODE  
 		FROM DB2ADMIN.STOCKTRANSACTION STOCKTRANSACTION RIGHT OUTER JOIN 
@@ -1052,7 +1136,8 @@ if (trim($rowdb21['PROVISIONALCOUNTERCODE']) =='I02M50') { $knitt = 'KNITTING IT
 		WHERE (STOCKTRANSACTION.LOGICALWAREHOUSECODE='P501' OR STOCKTRANSACTION.LOGICALWAREHOUSECODE='M904') AND STOCKTRANSACTION.ORDERCODE='$rowdb21[INTDOCUMENTPROVISIONALCODE]'
 		AND STOCKTRANSACTION.ORDERLINE ='$rowdb21[ORDERLINE]' 
 		GROUP BY BALANCE.LOTCODE ";					  
-		$stmt2S   = db2_exec($conn1,$sqlDB2S, array('cursor'=>DB2_SCROLLABLE));	
+		$stmt2S   = db2_prepare($conn1,$sqlDB2S);	
+		db2_execute($stmt2S);
 		$rowdb2S = db2_fetch_assoc($stmt2S);
 		$pos1=strpos($rowdb21['ITEMDESCRIPTION'],'*');
 		$supp=substr($rowdb21['ITEMDESCRIPTION'],0,$pos1);
@@ -1108,6 +1193,7 @@ if (trim($rowdb21['PROVISIONALCOUNTERCODE']) =='I02M50') { $knitt = 'KNITTING IT
               </div>
               <!-- /.card-body -->
             </div> 
+		<?php } ?>	
 	</form>		
       </div><!-- /.container-fluid -->
     <!-- /.content -->
