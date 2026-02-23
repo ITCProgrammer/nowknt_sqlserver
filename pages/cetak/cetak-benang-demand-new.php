@@ -30,7 +30,7 @@ header("Expires: 0");
             style="font-size:13px; border-collapse: collapse;">
             <thead>
                 <tr>
-                    <th colspan="22" style="border: 1px solid black; font-size: 2em;">
+                    <th colspan="24" style="border: 1px solid black; font-size: 2em;">
                         Laporan Loss Benang PO
                         <?= $status ?>
                     </th>
@@ -52,6 +52,8 @@ header("Expires: 0");
                     <th style="border: 1px solid black;">BS Produksi</th>
                     <th style="border: 1px solid black;">%</th>
                     <th style="border: 1px solid black;">Lain-Lain</th>
+                    <th style="border: 1px solid black;">%</th>
+                    <th style="border: 1px solid black;">Q3</th>
                     <th style="border: 1px solid black;">%</th>
                     <th style="border: 1px solid black;">Sisa</th>
                     <th style="border: 1px solid black;">Pakai</th>
@@ -104,28 +106,75 @@ i.LEGALNAME1,i.SUBCODE01,i.SUBCODE02,i.SUBCODE03,i.SUBCODE04,i.PROJECTCODE,i.PRO
                     /*$sqlDB22 = " SELECT sum(s.WEIGHTREALNET) AS KGSISA FROM STOCKTRANSACTION s WHERE s.TEMPLATECODE='125' AND s.ITEMTYPECODE='GYR' AND s.ORDERCODE='$rowdb2[PRODUCTIONORDERCODE]' ";
                      */
                     $sqlDB22 = "SELECT 
-	STOCKTRANSACTION.ORDERCODE,	
-	COUNT(STOCKTRANSACTION.BASEPRIMARYQUANTITY) AS QTY_DUS,
-	SUM(STOCKTRANSACTION.BASEPRIMARYQUANTITY) AS KGSISA,
-	SUM(STOCKTRANSACTION.BASESECONDARYQUANTITY) AS QTY_CONES
-FROM DB2ADMIN.STOCKTRANSACTION STOCKTRANSACTION LEFT OUTER JOIN 
-(
-SELECT LISTAGG(DISTINCT  TRIM(ITXVIEWKNTORDER.PRODUCTIONDEMANDCODE),', ') AS PRODUCTIONDEMANDCODE,PRODUCTIONORDERCODE
-FROM DB2ADMIN.ITXVIEWKNTORDER 
-GROUP BY PRODUCTIONORDERCODE
-) ITXVIEWKNTORDER ON ITXVIEWKNTORDER.PRODUCTIONORDERCODE =STOCKTRANSACTION.ORDERCODE 
-	LEFT OUTER JOIN DB2ADMIN.FULLITEMKEYDECODER FULLITEMKEYDECODER ON
-    STOCKTRANSACTION.FULLITEMIDENTIFIER = FULLITEMKEYDECODER.IDENTIFIER
-	LEFT OUTER JOIN DB2ADMIN.INITIALS INITIALS ON 
-	INITIALS.CODE =STOCKTRANSACTION.CREATIONUSER
-WHERE (STOCKTRANSACTION.ITEMTYPECODE ='GYR' OR STOCKTRANSACTION.ITEMTYPECODE ='DYR') and (STOCKTRANSACTION.LOGICALWAREHOUSECODE ='P501' OR STOCKTRANSACTION.LOGICALWAREHOUSECODE ='M501' OR STOCKTRANSACTION.LOGICALWAREHOUSECODE ='M904') AND
-	STOCKTRANSACTION.RETURNTRANSACTION ='1' AND STOCKTRANSACTION.ORDERCODE='$rowdb2[PRODUCTIONORDERCODE]' AND NOT STOCKTRANSACTION.ORDERCODE IS NULL
-	GROUP BY STOCKTRANSACTION.ORDERCODE
+    ST.ORDERCODE,    
+	SUM(CASE 
+            WHEN NOT ST.QUALITYLEVELCODE = 3 
+            THEN 1 
+            ELSE 0 
+        END) AS QTY_DUS,
+    SUM(CASE 
+            WHEN NOT ST.QUALITYLEVELCODE = 3 
+            THEN ST.BASEPRIMARYQUANTITY 
+            ELSE 0 
+        END) AS KGSISA,
+    SUM(CASE 
+            WHEN NOT ST.QUALITYLEVELCODE = 3 
+            THEN ST.BASESECONDARYQUANTITY 
+            ELSE 0 
+        END) AS QTY_CONES,
+    SUM(CASE 
+            WHEN ST.QUALITYLEVELCODE = 3 
+            THEN 1 
+            ELSE 0 
+        END) AS Q3_DUS,
+    SUM(CASE 
+            WHEN ST.QUALITYLEVELCODE = 3 
+            THEN ST.BASEPRIMARYQUANTITY 
+            ELSE 0 
+        END) AS Q3KG,
+    SUM(CASE 
+            WHEN ST.QUALITYLEVELCODE = 3 
+            THEN ST.BASESECONDARYQUANTITY 
+            ELSE 0 
+        END) AS Q3_CONES    
+
+FROM DB2ADMIN.STOCKTRANSACTION ST
+
+LEFT JOIN (
+    SELECT 
+        LISTAGG(DISTINCT TRIM(PRODUCTIONDEMANDCODE), ', ') 
+            AS PRODUCTIONDEMANDCODE,
+        PRODUCTIONORDERCODE
+    FROM DB2ADMIN.ITXVIEWKNTORDER
+    GROUP BY PRODUCTIONORDERCODE
+) ITXVIEWKNTORDER 
+    ON ITXVIEWKNTORDER.PRODUCTIONORDERCODE = ST.ORDERCODE
+
+LEFT JOIN DB2ADMIN.FULLITEMKEYDECODER F 
+    ON ST.FULLITEMIDENTIFIER = F.IDENTIFIER
+
+LEFT JOIN DB2ADMIN.INITIALS I 
+    ON I.CODE = ST.CREATIONUSER
+
+WHERE 
+    ST.ITEMTYPECODE IN ('GYR','DYR')
+    AND ST.LOGICALWAREHOUSECODE IN ('P501','M501','M904')
+    AND ST.RETURNTRANSACTION = '1'
+    AND ST.ORDERCODE = '".trim($rowdb2['PRODUCTIONORDERCODE'])."'
+    AND ST.ORDERCODE IS NOT NULL
+
+GROUP BY 
+    ST.ORDERCODE
 	
 	";
                     $stmt2 = db2_exec($conn1, $sqlDB22, array('cursor' => DB2_SCROLLABLE));
                     $rowdb22 = db2_fetch_assoc($stmt2);
-
+	 if ($rowdb22 != null) {				
+	 if(($rowdb21['KGPAKAI']-$rowdb22['KGSISA'])>0){
+		$prsn3 = round(($rowdb22['Q3KG']/($rowdb21['KGPAKAI']-$rowdb22['KGSISA']))*100,2);
+	 }else{
+		$prsn3 = 0;
+	 }}
                     $sqlDB23 = " SELECT FULLITEMKEYDECODER.SUMMARIZEDDESCRIPTION, PRODUCTIONRESERVATION.SUBCODE01, PRODUCTIONRESERVATION.SUBCODE02, PRODUCTIONRESERVATION.SUBCODE03
 	 , PRODUCTIONRESERVATION.SUBCODE04, PRODUCTIONRESERVATION.SUBCODE05, PRODUCTIONRESERVATION.SUBCODE06, PRODUCTIONRESERVATION.SUBCODE07, PRODUCTIONRESERVATION.SUBCODE08
      FROM DB2ADMIN.PRODUCTIONRESERVATION PRODUCTIONRESERVATION LEFT OUTER JOIN 
@@ -270,6 +319,12 @@ ORDER BY PROGRESSSTATUS ASC
                         <td style="border:1px solid black; padding:0.5em;">
                             <?php echo $prsn2; ?>
                         </td>
+                        <td style="border:1px solid black; padding:0.5em;"><?php
+                            if ($rowdb22 != null) {
+                                echo round(($rowdb22['Q3KG'] ?? 0), 2);
+                            }
+                            ?></td>
+                        <td style="border:1px solid black; padding:0.5em;"><?php echo $prsn3; ?></td>
                         <td style="border:1px solid black; padding:0.5em;">
                             <?php
                             if ($rowdb22 != null) {
