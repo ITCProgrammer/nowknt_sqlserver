@@ -137,7 +137,8 @@ $Awal	= isset($_POST['tgl_awal']) ? $_POST['tgl_awal'] : '';
 						}
 						$no = 1;
 						$c = 0;
-						$stmt   = db2_exec($conn1, $sqlDB2, array('cursor' => DB2_SCROLLABLE));
+						$stmt   = db2_prepare($conn1, $sqlDB2);
+								db2_execute($stmt);
 						while ($rowdb2 = db2_fetch_assoc($stmt)) {
 							$totHari = "";
 							$sqlDB23 = "SELECT ADSTORAGE.NAMENAME,ADSTORAGE.FIELDNAME,(ADSTORAGE.VALUEDECIMAL* 24) AS STDRAJUT 
@@ -145,38 +146,43 @@ $Awal	= isset($_POST['tgl_awal']) ? $_POST['tgl_awal'] : '';
 										WHERE ADSTORAGE.NAMENAME='ProductionRate' AND PRODUCT.ITEMTYPECODE='KGF' AND PRODUCT.SUBCODE02='$rowdb2[SUBCODE02]' AND 
 										PRODUCT.SUBCODE03='$rowdb2[SUBCODE03]' AND PRODUCT.COMPANYCODE='100' 
 										ORDER BY ADSTORAGE.FIELDNAME";
-							$stmt3   = db2_exec($conn1, $sqlDB23, array('cursor' => DB2_SCROLLABLE));
+							$stmt3   = db2_prepare($conn1, $sqlDB23);
+							db2_execute($stmt3);
 							$rowdb23 = db2_fetch_assoc($stmt3);
 
 							$sqlDB25 = " SELECT COUNT(WEIGHTREALNET ) AS JML,INSPECTIONENDDATETIME FROM 
 										ELEMENTSINSPECTION WHERE DEMANDCODE ='$rowdb2[PRODUCTIONDEMANDCODE]' AND ELEMENTITEMTYPECODE='KGF' AND QUALITYREASONCODE='PM' AND COMPANYCODE='100'
 										GROUP BY INSPECTIONENDDATETIME ";
-							$stmt5   = db2_exec($conn1, $sqlDB25, array('cursor' => DB2_SCROLLABLE));
+							$stmt5   = db2_prepare($conn1, $sqlDB25);
+							db2_execute($stmt5);
 							$rowdb25 = db2_fetch_assoc($stmt5);
 
 							$sqlDB26 = " SELECT INSPECTIONENDDATETIME  FROM  
 										ELEMENTSINSPECTION WHERE DEMANDCODE ='$rowdb2[PRODUCTIONDEMANDCODE]' AND ELEMENTITEMTYPECODE='KGF' AND COMPANYCODE='100' 
 										ORDER BY INSPECTIONENDDATETIME ASC LIMIT 1";
-							$stmt6   = db2_exec($conn1, $sqlDB26, array('cursor' => DB2_SCROLLABLE));
+							$stmt6   = db2_prepare($conn1, $sqlDB26);
 							$rowdb26 = db2_fetch_assoc($stmt6);
 
 							$sqlDB27 = " SELECT LASTUPDATEDATETIME  FROM  
 										PRODUCTIONDEMAND WHERE CODE ='$rowdb2[PRODUCTIONDEMANDCODE]' AND ITEMTYPEAFICODE='KGF' AND COMPANYCODE ='100' 
 										ORDER BY LASTUPDATEDATETIME ASC LIMIT 1";
-							$stmt7   = db2_exec($conn1, $sqlDB27, array('cursor' => DB2_SCROLLABLE));
+							$stmt7   = db2_prepare($conn1, $sqlDB27);
+							db2_execute($stmt7);
 							$rowdb27 = db2_fetch_assoc($stmt7);
 
 							$sqlDB28 = " SELECT INSPECTIONSTARTDATETIME  FROM  
 										ELEMENTSINSPECTION WHERE DEMANDCODE ='$rowdb2[PRODUCTIONDEMANDCODE]' AND ELEMENTITEMTYPECODE='KGF' AND COMPANYCODE='100' 
 										ORDER BY INSPECTIONSTARTDATETIME ASC LIMIT 1";
-							$stmt8   = db2_exec($conn1, $sqlDB28, array('cursor' => DB2_SCROLLABLE));
+							$stmt8   = db2_prepare($conn1, $sqlDB28);
+							db2_execute($stmt8);
 							$rowdb28 = db2_fetch_assoc($stmt8);
 
 							$sqlDB29 = " SELECT PLANNEDOPERATIONCODE,PROGRESSSTATUS,LONGDESCRIPTION  FROM PRODUCTIONDEMANDSTEP 
 										WHERE PRODUCTIONDEMANDCODE ='$rowdb2[PRODUCTIONDEMANDCODE]' AND PROGRESSSTATUS ='2' AND 
 										NOT (PLANNEDOPERATIONCODE='KNT1' OR PLANNEDOPERATIONCODE='INS1') AND ITEMTYPEAFICOMPANYCODE='100'
 										ORDER BY STEPNUMBER DESC ";
-							$stmt9   = db2_exec($conn1, $sqlDB29, array('cursor' => DB2_SCROLLABLE));
+							$stmt9   = db2_prepare($conn1, $sqlDB29);
+							db2_execute($stmt9);
 							$rowdb29 = db2_fetch_assoc($stmt9);
 
 							$awalDY  = strtotime($rowdb2['TGLS']);
