@@ -1,6 +1,9 @@
 <?php
 $Zone       = isset($_POST['zone']) ? trim($_POST['zone']) : '';
+$Zone1      = isset($_POST['zone1']) ? trim($_POST['zone1']) : '';
+$Zone2      = isset($_POST['zone2']) ? trim($_POST['zone2']) : '';
 $Lokasi     = isset($_POST['lokasi']) ? trim($_POST['lokasi']) : '';
+$Lokasi1    = isset($_POST['lokasi1']) ? trim($_POST['lokasi1']) : '';
 $Barcode    = isset($_POST['barcode']) ? substr($_POST['barcode'], -13) : '';
 $actionCek  = isset($_POST['cek']) ? $_POST['cek'] : '';
 $actionCari = isset($_POST['cari']) ? $_POST['cari'] : '';
@@ -9,6 +12,61 @@ $saveLokasi = isset($_POST['simpan_lokasi']) ? $_POST['simpan_lokasi'] : '';
 
 $likeLokasi = $Lokasi !== '' ? $Lokasi . '%' : '%';
 
+// =============================
+// SIMPAN MASTER ZONE
+// =============================
+if ($saveZone == "Save changes") {
+
+  if ($Zone1 == "") {
+    echo "<script>alert('Nama Zone tidak boleh kosong');</script>";
+  } else {
+
+    // Cek apakah zone sudah ada
+    $stmtCekZone = sqlsrv_query($con, "SELECT COUNT(*) as jml FROM dbknitt.tbl_zone WHERE nama=?", [$Zone1]);
+    $rowZone = $stmtCekZone ? sqlsrv_fetch_array($stmtCekZone, SQLSRV_FETCH_ASSOC) : ['jml' => 0];
+
+    if ($rowZone['jml'] > 0) {
+      echo "<script>alert('Zone sudah ada');</script>";
+    } else {
+
+      sqlsrv_query($con, "INSERT INTO dbknitt.tbl_zone (nama) VALUES (?)", [$Zone1]);
+      echo "<script>alert('Zone berhasil disimpan');</script>";
+
+    }
+  }
+}
+// =============================
+// SIMPAN MASTER LOKASI
+// =============================
+if ($saveLokasi == "Save changes") {
+
+  if ($Zone2 == "" || $Lokasi1 == "") {
+    echo "<script>alert('Zone dan Lokasi harus dipilih');</script>";
+  } else {
+
+    // Cek apakah lokasi sudah ada di zone tersebut
+    $stmtCekLok = sqlsrv_query(
+      $con,
+      "SELECT COUNT(*) as jml FROM dbknitt.tbl_lokasi WHERE nama=? AND zone=?",
+      [$Lokasi1, $Zone2]
+    );
+
+    $rowLok = $stmtCekLok ? sqlsrv_fetch_array($stmtCekLok, SQLSRV_FETCH_ASSOC) : ['jml' => 0];
+
+    if ($rowLok['jml'] > 0) {
+      echo "<script>alert('Lokasi sudah ada di Zone tersebut');</script>";
+    } else {
+
+      sqlsrv_query(
+        $con,
+        "INSERT INTO dbknitt.tbl_lokasi (nama, zone) VALUES (?, ?)",
+        [$Lokasi1, $Zone2]
+      );
+
+      echo "<script>alert('Lokasi berhasil disimpan');</script>";
+    }
+  }
+}
 // Helper ambil list master dari data stok (karena tabel master tidak ada di SQL Server)
 function getDistinctOptions($con, $field, $zone = null)
 {
@@ -229,14 +287,14 @@ $ck2 = $stmtCk2 ? sqlsrv_fetch_array($stmtCk2, SQLSRV_FETCH_ASSOC) : ['jml' => 0
         </div>
         <div class="form-group row">
           <label for="lokasi" class="col-md-1">Location <?=  $Lokasi  ?></label>
-          <div class="input-group input-group-sm" class="col-md-4">
-            <select class="form-control select2bs4" name="lokasi" id="lokasi_select">
+          <div class="input-group input-group-sm">
+            <select class="form-control select2bs4" name="lokasi" id="lokasi_select" style="width: 80%;">
                 <option value="">Pilih</option>
             </select>
             <span class="input-group-append">
               <button type="button" class="btn btn-warning btn-flat" data-toggle="modal" data-target="#DataLokasi"><i class="fa fa-plus"></i> </button>
             </span>
-          </div>
+			</div> 
         </div>
         <button class="btn btn-info" type="submit" value="Cari" name="cari">Cari Data</button>
       </div>
