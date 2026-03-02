@@ -1,5 +1,11 @@
 RewriteEngine On
 
+RewriteRule ^telescope$ ./debug-monitor.php [L,QSA]
+RewriteRule ^telescope/$ ./debug-monitor.php [L,QSA]
+RewriteRule ^telescope/requests$ ./debug-monitor.php?type=request [L,QSA]
+RewriteRule ^telescope/exceptions$ ./debug-monitor.php?type=error [L,QSA]
+RewriteRule ^telescope/errors$ ./debug-monitor.php?type=error [L,QSA]
+
 RewriteRule ^login$ login.php [L]
 RewriteRule ^lockscreen$ lockscreen.php [L]
 RewriteRule ^logout$ login.php?act=logout [L]
