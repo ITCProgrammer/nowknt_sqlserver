@@ -61,7 +61,8 @@ $status	= isset($_POST['stts']) ? $_POST['stts'] : '';
 			  <button class="btn btn-info" type="submit">Cari Data</button>
           </div>		  
 		  <!-- /.card-body -->          
-        </div>  	
+        </div>
+		<?php if($Awal!="" and $Akhir!="") { ?>	
 		<div class="card card-success">
               <div class="card-header">
                 <h3 class="card-title">Data Kain Greige</h3>
@@ -445,6 +446,7 @@ if (!empty($rowdb2['RMPREQDATETO'])) {
               </div>
               <!-- /.card-body -->
             </div>  
+			<?php } ?>
 		</form>	
       </div><!-- /.container-fluid -->
     <!-- /.content -->
