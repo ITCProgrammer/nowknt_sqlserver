@@ -83,8 +83,7 @@ $DemandNo	= isset($_POST['demandno']) ? $_POST['demandno'] : '';
                     <th rowspan="2" valign="middle" style="text-align: center">Nama</th>
                     <th colspan="2" valign="middle" style="text-align: center">KBC</th>
                     <th colspan="2" valign="middle" style="text-align: center">KBP</th>
-                    <th colspan="3" valign="middle" style="text-align: center">KBPC</th>
-                    <th colspan="3" valign="middle" style="text-align: center">KBPP</th>
+                    <th colspan="3" valign="middle" style="text-align: center">PDA</th>
                     <th colspan="3" valign="middle" style="text-align: center">TB</th>
                     <th colspan="2" valign="middle" style="text-align: center">TBT</th>
                     <th colspan="2" valign="middle" style="text-align: center">PBT</th>
@@ -100,10 +99,7 @@ $DemandNo	= isset($_POST['demandno']) ? $_POST['demandno'] : '';
                     <th valign="middle" style="text-align: center">dus</th>
                     <th valign="middle" style="text-align: center">Target</th>
                     <th valign="middle" style="text-align: center">dus</th>
-                    <th valign="middle" style="text-align: center">cones</th>
-                    <th valign="middle" style="text-align: center">Target</th>
-                    <th valign="middle" style="text-align: center">dus</th>
-                    <th valign="middle" style="text-align: center">cones</th>
+                    <th valign="middle" style="text-align: center">qty</th>
                     <th valign="middle" style="text-align: center">Target</th>
                     <th valign="middle" style="text-align: center">dus</th>
                     <th valign="middle" style="text-align: center">qty</th>
@@ -128,11 +124,14 @@ function KPI($kd,$jns){
 include "koneksi.php";	
 $sqlDB20 = " SELECT x.* FROM DB2ADMIN.USERGENERICGROUP x
 WHERE x.USERGENERICGROUPTYPECODE ='KPI' AND x.CODE='$kd' ";
-$stmt0   = db2_exec($conn1,$sqlDB20, array('cursor'=>DB2_SCROLLABLE));
+$stmt0   = db2_prepare($conn1,$sqlDB20);
+db2_execute($stmt0);	
 $rowdb20 = db2_fetch_assoc($stmt0);
 if($jns=="DUS"){
 	return $rowdb20['SHORTDESCRIPTION'];
 }else if($jns=="CONES"){
+	return $rowdb20['SEARCHDESCRIPTION'];
+}else if($jns=="KG"){
 	return $rowdb20['SEARCHDESCRIPTION'];
 }	
 	
@@ -178,7 +177,8 @@ GROUP BY
 	STOCKTRANSACTION.CREATIONUSER,KPI.KDKPI,MCN.NOMC) p
 WHERE p.KDKPI= '$kd'	
 GROUP BY p.CREATIONUSER,p.KDKPI ";
-$stmt0   = db2_exec($conn1,$sqlDB20, array('cursor'=>DB2_SCROLLABLE));
+$stmt0   = db2_prepare($conn1,$sqlDB20);
+db2_execute($stmt0);	
 $rowdb20 = db2_fetch_assoc($stmt0);
 	if($rowdb20['MC']>0){
 		return $rowdb20['MC'];
@@ -215,7 +215,10 @@ SUM(CASE WHEN k.KDKPI='NPP' THEN k.QTY_KG ELSE 0 END) AS NPP_KG,
 SUM(CASE WHEN k.KDKPI='NPP' THEN k.QTY_CONES ELSE 0 END) AS NPP_CONES,
 SUM(CASE WHEN k.KDKPI='TB' THEN k.QTY_DUS ELSE 0 END) AS TB_DUS,
 SUM(CASE WHEN k.KDKPI='TB' THEN k.QTY_KG ELSE 0 END) AS TB_KG,
-SUM(CASE WHEN k.KDKPI='TB' THEN k.QTY_CONES ELSE 0 END) AS TB_CONES
+SUM(CASE WHEN k.KDKPI='TB' THEN k.QTY_CONES ELSE 0 END) AS TB_CONES,
+SUM(CASE WHEN k.KDKPI IS NULL THEN k.QTY_DUS ELSE 0 END) AS PDA_DUS,
+SUM(CASE WHEN k.KDKPI IS NULL THEN k.QTY_KG ELSE 0 END) AS PDA_KG,
+SUM(CASE WHEN k.KDKPI IS NULL THEN k.QTY_CONES ELSE 0 END) AS PDA_CONES
 FROM
 (SELECT 
 	STOCKTRANSACTION.CREATIONUSER,
@@ -257,10 +260,11 @@ GROUP BY
 	STOCKTRANSACTION.CREATIONUSER,KPI.KDKPI,STOCKTRANSACTION.TRANSACTIONNUMBER,MCN.NOMC) k
 GROUP BY k.CREATIONUSER			
 ";
-	$stmt1   = db2_exec($conn1,$sqlDB21, array('cursor'=>DB2_SCROLLABLE));
+	$stmt1   = db2_prepare($conn1,$sqlDB21);
 	//}		
 	$dTBT="";
-	$dPBT="";				  
+	$dPBT="";			
+	db2_execute($stmt1);				  
     while($rowdb21 = db2_fetch_assoc($stmt1)){ 
 	$dTBT=UNIT("TBT",$rowdb21['CREATIONUSER'],$Shift,$Awal,$Akhir);
 	$dPBT=UNIT("PBT",$rowdb21['CREATIONUSER'],$Shift,$Awal,$Akhir);
@@ -282,7 +286,8 @@ WHERE
 	AND NOT ORDERCODE IS NULL
 GROUP BY
 	x.CREATIONUSER ";
-$stmtQ2   = db2_exec($conn1,$sqlQ2, array('cursor'=>DB2_SCROLLABLE));
+$stmtQ2   = db2_prepare($conn1,$sqlQ2);
+db2_execute($stmtQ2);		
 $rowdQ2 = db2_fetch_assoc($stmtQ2);	
 	
 ?>
@@ -293,12 +298,9 @@ $rowdQ2 = db2_fetch_assoc($stmtQ2);
       <td style="text-align: center"><?php echo KPI("KBC","DUS")*$rowdb21['KBC_DUS']; ?></td>
       <td style="text-align: center"><?php echo $rowdb21['KBP_DUS']; ?></td>
       <td style="text-align: center"><?php echo KPI("KBP","DUS")*$rowdb21['KBP_DUS']; ?></td>
-      <td style="text-align: center"><?php echo $rowdb21['KBPC_DUS']; ?></td>
-      <td style="text-align: center"><?php echo round($rowdb21['KBPC_CONES']); ?></td>
-      <td style="text-align: center"><?php echo (KPI("KBPC","DUS")*$rowdb21['KBPC_DUS'])+round((KPI("KBPC","CONES")*$rowdb21['KBPC_CONES'])/60); ?></td>
-      <td style="text-align: center"><?php echo $rowdb21['KBPP_DUS']; ?></td>
-      <td style="text-align: center"><?php echo round($rowdb21['KBPP_CONES']); ?></td>
-      <td style="text-align: center"><?php echo (KPI("KBPP","DUS")*$rowdb21['KBPP_DUS'])+round((KPI("KBPP","CONES")*$rowdb21['KBPP_CONES'])/60); ?></td>
+      <td style="text-align: center"><?php echo $rowdb21['PDA_DUS']; ?></td>
+      <td style="text-align: center"><?php echo round($rowdb21['PDA_KG'],2); ?></td>
+      <td style="text-align: center"><?php echo (KPI("PDA","DUS")*$rowdb21['PDA_DUS'])+round((KPI("PDA","KG")*$rowdb21['PDA_KG'])/60,2); ?></td>
       <td style="text-align: center"><?php echo $rowdb21['TB_DUS']; ?></td>
       <td style="text-align: right"><?php echo round($rowdb21['TB_KG'],2); ?></td>
       <td style="text-align: center"><?php echo (KPI("TB","DUS")*$rowdb21['TB_DUS'])+round(($rowdb21['TB_KG'])/(KPI("TB","CONES"))); ?></td>
@@ -314,10 +316,10 @@ $rowdQ2 = db2_fetch_assoc($stmtQ2);
       <td style="text-align: center"><?php echo $rowdb21['NPP_DUS']; ?></td>
       <td style="text-align: center"><?php echo round($rowdb21['NPP_CONES']); ?></td>
       <td style="text-align: center"><?php echo (KPI("NPP","DUS")*$rowdb21['NPP_DUS'])+round((KPI("NPP","CONES")*$rowdb21['NPP_CONES'])/60); ?></td>
-      <td style="text-align: center"><?php echo (KPI("KBC","DUS")*$rowdb21['KBC_DUS'])+(KPI("KBP","DUS")*$rowdb21['KBP_DUS'])+((KPI("KBPC","DUS")*$rowdb21['KBPC_DUS'])+round((KPI("KBPC","CONES")*$rowdb21['KBPC_CONES'])/60))+((KPI("KBPP","DUS")*$rowdb21['KBPP_DUS'])+round((KPI("KBPP","CONES")*$rowdb21['KBPP_CONES'])/60))+
+      <td style="text-align: center"><?php echo (KPI("KBC","DUS")*$rowdb21['KBC_DUS'])+(KPI("KBP","DUS")*$rowdb21['KBP_DUS'])+((KPI("PDA","DUS")*$rowdb21['PDA_DUS'])+round((KPI("PDA","CONES")*$rowdb21['PDA_KG'])/60))+
 	  ((KPI("NPC","DUS")*$rowdb21['NPC_DUS'])+round((KPI("NPC","CONES")*$rowdb21['NPC_CONES'])/60))+
 	  ((KPI("NPP","DUS")*$rowdb21['NPP_DUS'])+round((KPI("NPP","CONES")*$rowdb21['NPP_CONES'])/60))+((KPI("TB","DUS")*$rowdb21['TB_DUS'])+round(($rowdb21['TB_KG'])/(KPI("TB","CONES")))+(KPI("TBT","DUS") * $dTBT)+(KPI("PBT","DUS") * $dPBT)+round((round($rowdQ2['CONES'],2)*5)/60,2)); ?></td>
-      <td style="text-align: center"><?php echo round(((KPI("KBC","DUS")*$rowdb21['KBC_DUS'])+(KPI("KBP","DUS")*$rowdb21['KBP_DUS'])+((KPI("KBPC","DUS")*$rowdb21['KBPC_DUS'])+round((KPI("KBPC","CONES")*$rowdb21['KBPC_CONES'])/60))+((KPI("KBPP","DUS")*$rowdb21['KBPP_DUS'])+round((KPI("KBPP","CONES")*$rowdb21['KBPP_CONES'])/60))+
+      <td style="text-align: center"><?php echo round(((KPI("KBC","DUS")*$rowdb21['KBC_DUS'])+(KPI("KBP","DUS")*$rowdb21['KBP_DUS'])+((KPI("PDA","DUS")*$rowdb21['PDA_DUS'])+round((KPI("PDA","CONES")*$rowdb21['PDA_KG'])/60))+
 	  ((KPI("NPC","DUS")*$rowdb21['NPC_DUS'])+round((KPI("NPC","CONES")*$rowdb21['NPC_CONES'])/60))+
 	  ((KPI("NPP","DUS")*$rowdb21['NPP_DUS'])+round((KPI("NPP","CONES")*$rowdb21['NPP_CONES'])/60))+
 	  ((KPI("TB","DUS")*$rowdb21['TB_DUS'])+round(($rowdb21['TB_KG'])/(KPI("TB","CONES")))+(KPI("TBT","DUS") * $dTBT)+
@@ -337,9 +339,6 @@ $rowdQ2 = db2_fetch_assoc($stmtQ2);
 	    <td style="text-align: right">&nbsp;</td>
 	    <td style="text-align: center">&nbsp;</td>
 	    <td style="text-align: right">&nbsp;</td>
-	    <td style="text-align: center">&nbsp;</td>
-	    <td style="text-align: right">&nbsp;</td>
-	    <td style="text-align: center">&nbsp;</td>
 	    <td style="text-align: center">&nbsp;</td>
 	    <td style="text-align: right">&nbsp;</td>
 	    <td style="text-align: center">&nbsp;</td>
